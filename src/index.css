@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #059669; /* Emerald 600 */
+    --primary-hover: #047857; /* Emerald 700 */
+    --primary-light: #ecfdf5; /* Emerald 50 */
+    --secondary: #10b981; /* Emerald 500 */
+    --text-main: #1f2937; /* Dark Charcoal / Gray 800 */
+    --text-muted: #6b7280; /* Gray 500 */
+    --bg-main: #ffffff;
+    --bg-secondary: #f9fafb; /* Very Light Gray / Gray 50 */
+    --border-color: #e5e7eb; /* Soft Gray / Gray 200 */
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: var(--text-main);
+    background-color: var(--bg-secondary);
+  }
+
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Custom Scrollbar for sleek marketplace feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Mobile Touch & Safe area utilities */
+.safe-bottom {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Marketplace line-clamp utilities */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
