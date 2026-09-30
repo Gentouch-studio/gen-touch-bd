@@ -39,7 +39,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [adFilter, setAdFilter] = useState<'all' | 'pending' | 'approved'>('pending');
   const [orderFilter, setOrderFilter] = useState<'all' | 'Pending Approval' | 'Pending' | 'Confirmed' | 'Shipped' | 'Delivered' | 'Cancelled'>('all');
   const [orderSearch, setOrderSearch] = useState('');
-
+const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [newCouponDesc, setNewCouponDesc] = useState('');
   // Role tracking
   const [adminRole, setAdminRole] = useState<'admin' | 'moderator'>('admin');
 
@@ -123,9 +125,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   };
 
   // কুপন যোগ ও মুছে ফেলার লজিক
-  const [newCouponCode, setNewCouponCode] = useState('');
-  const [newCouponDiscount, setNewCouponDiscount] = useState('');
-  const [newCouponDesc, setNewCouponDesc] = useState('');
 
   const handleAddCoupon = (e: React.FormEvent) => {
     e.preventDefault();
