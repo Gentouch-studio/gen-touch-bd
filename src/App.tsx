@@ -259,9 +259,12 @@ const INITIAL_USER_ADS: UserAd[] = [
 export function App() {
   // Products
   const [products, setProducts] = useState<Product[]>(() => {
-    try {
+  try {
       const saved = localStorage.getItem('gentouch_products');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {
       // ignore
     }
