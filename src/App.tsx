@@ -289,7 +289,7 @@ export function App() {
   const [wishlist, setWishlist] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('gentouch_wishlist');
-      return saved ? JSON.parse(saved);
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
