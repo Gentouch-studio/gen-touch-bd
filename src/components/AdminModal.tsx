@@ -6,6 +6,7 @@ import {
   Layers
 } from 'lucide-react';
 import { Order, OrderStatus, UserAd, CouponItem } from '../types';
+import { productService } from '../services/productService';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [secretCodeInput, setSecretCodeInput] = useState('');
   const [authError, setAuthError] = useState('');
   
-  // TABS: orders, coupons, ads, manage_posts (NEW)
+  // TABS: orders, coupons, ads, manage_posts
   const [activeTab, setActiveTab] = useState<'orders' | 'coupons' | 'ads' | 'manage_posts'>('orders');
   const [adFilter, setAdFilter] = useState<'all' | 'pending' | 'approved'>('pending');
   const [orderFilter, setOrderFilter] = useState<'all' | 'Pending Approval' | 'Pending' | 'Confirmed' | 'Shipped' | 'Delivered' | 'Cancelled'>('all');
@@ -59,28 +60,14 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         discountAmount: 10,
         description: 'অফিসিয়াল স্থায়ী কুপন (৳১০ ছাড়)',
         isActive: true,
-        isPermanent: true,
-      },
-      {
-        id: 'coup-2',
-        code: 'WELCOME50',
-        discountAmount: 50,
-        description: 'ওয়েলকাম বোনাস কুপন (৳৫০ ছাড়)',
-        isActive: true,
-        isPermanent: false,
       },
     ];
   });
 
-  const [newCouponCode, setNewCouponCode] = useState('');
-  const [newCouponDiscount, setNewCouponDiscount] = useState<number | ''>('');
-  const [newCouponDesc, setNewCouponDesc] = useState('');
-  const [couponSuccess, setCouponSuccess] = useState('');
-
   // Manage Uploaded Posts & Products State
   const [uploadedPosts, setUploadedPosts] = useState<any[]>(() => {
     try {
-      const saved = localStorage.getItem('gen_touch_custom_products') || localStorage.getItem('gentouch_products');
+      const saved = localStorage.getItem('gentouch_products');
       if (saved) {
         return JSON.parse(saved);
       }
@@ -89,23 +76,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
     return [];
   });
-
   const [postSearch, setPostSearch] = useState('');
   const [postDeleteSuccess, setPostDeleteSuccess] = useState('');
 
-  // Reload products whenever tab changes to 'manage_posts'
+  // রিয়েলটাইমে ডেটাবেস থেকে প্রোডাক্ট রিফ্রেশ রাখা
   useEffect(() => {
-    if (activeTab === 'manage_posts') {
-      try {
-        const saved = localStorage.getItem('gen_touch_custom_products') || localStorage.getItem('gentouch_products');
-        if (saved) {
-          setUploadedPosts(JSON.parse(saved));
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }, [activeTab]);
+    const unsubscribe = productService.subscribeToProducts((products) => {
+      setUploadedPosts(products);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -122,7 +104,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     setAuthError('');
     const code = secretCodeInput.trim();
 
-    // Supports Hunter#11220 or Hunter#1122 as Admin, Hunter#1212 as Moderator
     if (code === 'Hunter#11220' || code === 'Hunter#1122') {
       setAdminRole('admin');
       onAuthenticate('Hunter#1122');
@@ -141,81 +122,32 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
   };
 
-  const pendingAdsCount = userAds.filter((ad) => ad.status === 'pending').length;
-  const pendingApprovalOrdersCount = orders.filter((o) => o.status === 'Pending Approval' || o.status === 'Pending').length;
+  // কুপন যোগ ও মুছে ফেলার লজিক
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [newCouponDesc, setNewCouponDesc] = useState('');
 
-  // Filter Orders
-  const filteredOrders = orders.filter((ord) => {
-    const matchesFilter = orderFilter === 'all' 
-      ? true 
-      : ord.status === orderFilter;
-
-    const matchesSearch = 
-      ord.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
-      ord.customer.fullName.toLowerCase().includes(orderSearch.toLowerCase()) ||
-      ord.customer.phone.includes(orderSearch) ||
-      (ord.paymentDetails?.transactionId && ord.paymentDetails.transactionId.toLowerCase().includes(orderSearch.toLowerCase())) ||
-      (ord.advancePaymentDetails?.transactionId && ord.advancePaymentDetails.transactionId.toLowerCase().includes(orderSearch.toLowerCase()));
-
-    return matchesFilter && matchesSearch;
-  });
-
-  // Open WhatsApp chat directly with the customer
-  const handleOpenWhatsApp = (order: Order) => {
-    const rawPhone = order.customer.phone.replace(/[^0-9]/g, '');
-    const cleanPhone = rawPhone.startsWith('880') ? rawPhone : rawPhone.startsWith('0') ? `88${rawPhone}` : `880${rawPhone}`;
-    const message = encodeURIComponent(
-      `আসসালামু আলাইকুম ${order.customer.fullName},\nGEN-TOUCH BD থেকে আপনার অর্ডার (${order.id}) সম্পর্কে যোগাযোগ করছি।\nআপনার TrxID: ${order.paymentDetails?.transactionId || order.advancePaymentDetails?.transactionId || 'N/A'}।\nমোট মূল্য: ৳${order.total}।`
-    );
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
-  };
-
-  // Quick Approve Order
-  const handleApproveOrder = (orderId: string) => {
-    onUpdateOrderStatus(orderId, 'Confirmed');
-  };
-
-  // Add new coupon
   const handleAddCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCouponCode.trim() || !newCouponDiscount || Number(newCouponDiscount) <= 0) {
-      return;
-    }
+    if (!newCouponCode.trim() || !newCouponDiscount) return;
 
-    const cleanCode = newCouponCode.trim().toLowerCase();
-    const existing = coupons.find(c => c.code.toLowerCase() === cleanCode);
-    if (existing) {
-      alert('এই কুপন কোডটি ইতিমধ্যে রয়েছে!');
-      return;
-    }
-
-    const newCoupon: CouponItem = {
+    const newCoup: CouponItem = {
       id: `coup-${Date.now()}`,
-      code: cleanCode,
+      code: newCouponCode.trim().toLowerCase(),
       discountAmount: Number(newCouponDiscount),
-      description: newCouponDesc.trim() || `৳${newCouponDiscount} ছাড়ের কুপন`,
+      description: newCouponDesc.trim() || `৳${newCouponDiscount} ছাড়`,
       isActive: true,
-      isPermanent: false,
     };
 
-    setCoupons(prev => [newCoupon, ...prev]);
+    setCoupons((prev) => [newCoup, ...prev]);
     setNewCouponCode('');
     setNewCouponDiscount('');
     setNewCouponDesc('');
-    setCouponSuccess('নতুন কুপন সফলভাবে যুক্ত করা হয়েছে!');
-    setTimeout(() => setCouponSuccess(''), 3000);
-  };
-
-  const handleToggleCoupon = (id: string) => {
-    setCoupons(prev =>
-      prev.map(c => (c.id === id ? { ...c, isActive: !c.isActive } : c))
-    );
   };
 
   const handleDeleteCoupon = (id: string) => {
-    const target = coupons.find(c => c.id === id);
-    if (target?.isPermanent) {
-      alert('স্থায়ী অফিসিয়াল কুপন ডিলিট করা যাবে না।');
+    if (adminRole === 'moderator') {
+      alert('মডারেটরের কুপন ডিলিট করার অনুমতি নেই। শুধুমাত্র এডমিন ডিলিট করতে পারবেন।');
       return;
     }
     if (confirm('আপনি কি এই কুপনটি মুছে ফেলতে চান?')) {
@@ -223,33 +155,57 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
   };
 
-  // Handler: Delete ANY Uploaded Post / Product directly from the website
-  const handleDeletePost = (postId: string, postTitle: string) => {
-    if (window.confirm(`আপনি কি নিশ্চিত যে আপনি "${postTitle}" পোস্টটি ওয়েবসাইট থেকে স্থায়ীভাবে মুছে ফেলতে চান?`)) {
-      const updated = uploadedPosts.filter(p => p.id !== postId);
-      setUploadedPosts(updated);
-
+  // ডেটাবেস থেকে স্থায়ীভাবে পোস্ট/প্রোডাক্ট ডিলিট (মোবাইল ও পিসিতে সিঙ্ক হবে)
+  const handleDeletePost = async (postId: string, postTitle: string) => {
+    if (window.confirm(`আপনি কি নিশ্চিত যে আপনি "${postTitle}" পোস্টটি ওয়েবসাইট ও ডেটাবেস থেকে স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       try {
-        localStorage.setItem('gen_touch_custom_products', JSON.stringify(updated));
-        localStorage.setItem('gentouch_products', JSON.stringify(updated));
+        await productService.deleteProductOrAd(postId);
         
-        // Also trigger storage event so other open components refresh
-        window.dispatchEvent(new Event('storage'));
+        const updated = uploadedPosts.filter(p => p.id !== postId);
+        setUploadedPosts(updated);
+        try {
+          localStorage.setItem('gentouch_products', JSON.stringify(updated));
+          localStorage.setItem('gen_touch_custom_products', JSON.stringify(updated));
+          window.dispatchEvent(new Event('storage'));
+        } catch {
+          // ignore
+        }
+
+        setPostDeleteSuccess(`"${postTitle}" পোস্টটি সফলভাবে ডিলিট করা হয়েছে!`);
+        setTimeout(() => setPostDeleteSuccess(''), 4000);
       } catch (err) {
         console.error(err);
+        alert('ডিলিট করার সময় সমস্যা হয়েছে, দয়া করে আবার চেষ্টা করুন।');
       }
-
-      setPostDeleteSuccess(`"${postTitle}" পোস্টটি সফলভাবে ওয়েবসাইট থেকে ডিলিট করা হয়েছে!`);
-      setTimeout(() => setPostDeleteSuccess(''), 4000);
     }
   };
 
-  // Filtered Uploaded Posts
   const filteredUploadedPosts = uploadedPosts.filter((p) => {
     const q = postSearch.toLowerCase();
     const title = (p.name || p.title || '').toLowerCase();
     const cat = (p.category || '').toLowerCase();
     return title.includes(q) || cat.includes(q);
+  });
+
+  const filteredOrders = orders.filter((ord) => {
+    const matchesFilter = orderFilter === 'all' 
+      ? true 
+      : orderFilter === 'Pending Approval'
+      ? ord.status === 'Pending Approval' || ord.status === 'Pending'
+      : ord.status === orderFilter;
+
+    const matchesSearch = 
+      ord.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      ord.customer.phone.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      ord.customer.fullName.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      (ord.paymentDetails?.transactionId && ord.paymentDetails.transactionId.toLowerCase().includes(orderSearch.toLowerCase()));
+
+    return matchesFilter && matchesSearch;
+  });
+
+  const filteredAds = userAds.filter((ad) => {
+    if (adFilter === 'all') return true;
+    return ad.status === adFilter;
   });
 
   return (
@@ -262,80 +218,68 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base tracking-wide">GEN-TOUCH Admin & Moderator Control</h3>
-              <p className="text-xs text-gray-400">Order Verification, Coupon Management & Ad Approvals</p>
+              <h3 className="font-bold text-base tracking-wide flex items-center gap-2">
+                GEN-TOUCH Management Console
+                {isAuthenticated && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                    adminRole === 'admin' 
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  }`}>
+                    {adminRole === 'admin' ? 'Super Admin' : 'Moderator'}
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-gray-400">Order verification, Member Ads, and Live Product Management</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {isAuthenticated && (
-              <button
-                onClick={onLogout}
-                className="text-xs text-red-400 hover:text-red-300 font-semibold px-3 py-1 rounded-lg bg-red-950/40 border border-red-900/50 transition"
-              >
-                Logout ({adminRole === 'admin' ? 'Admin' : 'Moderator'})
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 text-gray-400 hover:text-white rounded-lg transition"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-white rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* IF NOT AUTHENTICATED: SECRET LOGIN FORM */}
+        {/* Not Authenticated State */}
         {!isAuthenticated ? (
-          <div className="p-8 flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-5">
-            <div className="w-16 h-16 rounded-2xl bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500">
+          <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500 mb-4 shadow-lg shadow-red-950/40">
               <Lock className="w-8 h-8" />
             </div>
-            <div>
-              <h4 className="text-xl font-black text-white mb-1">Restricted Access</h4>
-              <p className="text-xs text-gray-400">
-                অর্ডার অ্যাপ্রুভাল, বিকাশ TrxID ভেরিফিকেশন, কুপন তৈরি ও বিজ্ঞাপন যাচাই করতে আপনার সিক্রেট পাসওয়ার্ড দিন।
-              </p>
-            </div>
+            <h4 className="text-xl font-bold mb-2">Restricted Access Area</h4>
+            <p className="text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
+              দয়া করে আপনার সিক্রেট কোড প্রদান করে এডমিন অথবা মডারেটর হিসেবে প্যানেলে প্রবেশ করুন।
+            </p>
 
-            {authError && (
-              <div className="w-full p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-300 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                {authError}
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="w-full space-y-3">
-              <div>
-                <input
-                  type="password"
-                  required
-                  placeholder="অ্যাডমিন বা মডারেটর পাসওয়ার্ড দিন"
-                  value={secretCodeInput}
-                  onChange={(e) => setSecretCodeInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition text-center font-mono tracking-widest"
-                />
-              </div>
+            <form onSubmit={handleLogin} className="w-full max-w-xs space-y-3">
+              <input
+                type="password"
+                placeholder="Enter Secret Passcode"
+                value={secretCodeInput}
+                onChange={(e) => setSecretCodeInput(e.target.value)}
+                className="w-full px-4 py-3 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-center text-sm tracking-widest text-white outline-none transition"
+                autoFocus
+              />
+              {authError && (
+                <p className="text-xs text-red-400 flex items-center justify-center gap-1 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5" /> {authError}
+                </p>
+              )}
               <button
                 type="submit"
-                className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/30 transition"
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition text-sm shadow-lg shadow-red-950/50"
               >
-                লগইন করুন (Authorize)
+                আনলক ও প্রবেশ করুন
               </button>
             </form>
-
-            <div className="w-full p-3 bg-[#101217] border border-gray-800/80 rounded-xl text-[11px] text-gray-400 text-left space-y-1">
-              <p className="text-gray-300 font-semibold">🔒 সংরক্ষিত রোল এক্সেস:</p>
-              <p>• Admin: ফুল এক্সেস (পেমেন্ট, অর্ডার অ্যাপ্রুভ, কুপন, বিজ্ঞাপন)</p>
-              <p>• Moderator: অর্ডার ভেরিফিকেশন ও ট্র্যাকিং</p>
-            </div>
           </div>
         ) : (
-          /* AUTHENTICATED: ADMIN DASHBOARD */
+          /* Authenticated Dashboard */
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Tabs Header */}
-            <div className="flex items-center justify-between px-6 border-b border-gray-800 bg-[#101217] overflow-x-auto">
-              <div className="flex items-center gap-4">
+            {/* Navigation Tabs */}
+            <div className="flex items-center justify-between px-6 border-b border-gray-800 bg-[#12141a]/60 overflow-x-auto">
+              <div className="flex gap-4 sm:gap-8">
                 <button
                   onClick={() => setActiveTab('orders')}
                   className={`py-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
@@ -344,14 +288,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       : 'text-gray-400 border-transparent hover:text-gray-200'
                   }`}
                 >
-                  <ShoppingBag className="w-4 h-4" /> Customer Orders ({orders.length})
-                  {pendingApprovalOrdersCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-600 text-white animate-pulse">
-                      {pendingApprovalOrdersCount} পেন্ডিং
-                    </span>
-                  )}
+                  <Package className="w-4 h-4" /> কাস্টমার অর্ডার ({orders.length})
                 </button>
-
                 <button
                   onClick={() => setActiveTab('coupons')}
                   className={`py-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
@@ -360,26 +298,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       : 'text-gray-400 border-transparent hover:text-gray-200'
                   }`}
                 >
-                  <Tag className="w-4 h-4" /> কুপন কোড ম্যানেজার ({coupons.length})
+                  <Tag className="w-4 h-4" /> ডিসকাউন্ট কুপন ({coupons.length})
                 </button>
-
                 <button
                   onClick={() => setActiveTab('ads')}
-                  className={`py-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 relative whitespace-nowrap ${
+                  className={`py-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
                     activeTab === 'ads'
                       ? 'text-red-500 border-red-500'
                       : 'text-gray-400 border-transparent hover:text-gray-200'
                   }`}
                 >
-                  <Megaphone className="w-4 h-4" /> User Ads ({userAds.length})
-                  {pendingAdsCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white">
-                      {pendingAdsCount} Pending
-                    </span>
-                  )}
+                  <Megaphone className="w-4 h-4" /> মেম্বার এডস ({userAds.filter(a => a.status === 'pending').length} পেন্ডিং)
                 </button>
-
-                {/* NEW OPTION: USER ADS ER PASE POST DLT / MANAGE TAB */}
                 <button
                   onClick={() => setActiveTab('manage_posts')}
                   className={`py-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
@@ -388,25 +318,32 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       : 'text-gray-400 border-transparent hover:text-gray-200'
                   }`}
                 >
-                  <Layers className="w-4 h-4" /> পোস্ট ডিলিট / ম্যানেজ ({uploadedPosts.length})
+                  <Layers className="w-4 h-4" /> প্রোডাক্ট ডিলিট / লাইভ ম্যানেজ ({uploadedPosts.length})
                 </button>
               </div>
 
-              <div className="text-[11px] text-gray-500 whitespace-nowrap ml-4">
-                Logged in as: <strong className="text-emerald-400">{adminRole === 'admin' ? 'Super Admin' : 'Moderator'}</strong>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-gray-400">
+                  User: <strong className="text-emerald-400">{adminRole === 'admin' ? 'Super Admin' : 'Moderator'}</strong>
+                </span>
+                <button
+                  onClick={onLogout}
+                  className="px-2.5 py-1 text-xs text-gray-400 hover:text-red-400 border border-gray-800 rounded-lg hover:border-red-800 transition"
+                >
+                  লগআউট
+                </button>
               </div>
             </div>
 
-            {/* TAB 1: ORDERS WITH APPROVAL SYSTEM */}
+            {/* TAB 1: ORDERS */}
             {activeTab === 'orders' && (
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Order Filters & Search Bar */}
                 <div className="px-6 py-2.5 bg-[#12141a] border-b border-gray-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
                     <span className="text-gray-400 flex items-center gap-1 shrink-0">
-                      <Filter className="w-3 h-3" /> Status:
+                      <Filter className="w-3 h-3" /> Filter:
                     </span>
-                    {(['all', 'Pending Approval', 'Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'] as const).map((filter) => (
+                    {(['all', 'Pending Approval', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'] as const).map((filter) => (
                       <button
                         key={filter}
                         onClick={() => setOrderFilter(filter)}
@@ -416,11 +353,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             : 'text-gray-400 hover:text-white bg-[#161920]'
                         }`}
                       >
-                        {filter === 'all' 
-                          ? `All (${orders.length})` 
-                          : filter === 'Pending Approval' 
-                          ? `পেন্ডিং অ্যাপ্রুভাল (${orders.filter(o => o.status === 'Pending Approval' || o.status === 'Pending').length})`
-                          : filter}
+                        {filter === 'all' ? `All (${orders.length})` : filter}
                       </button>
                     ))}
                   </div>
@@ -444,303 +377,132 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       <p className="text-sm">কোনো অর্ডার পাওয়া যায়নি।</p>
                     </div>
                   ) : (
-                    filteredOrders.map((ord) => {
-                      const isPending = ord.status === 'Pending Approval' || ord.status === 'Pending';
-                      const sender = ord.paymentDetails?.senderNumber || ord.advancePaymentDetails?.senderNumber;
-                      const transaction = ord.paymentDetails?.transactionId || ord.advancePaymentDetails?.transactionId;
-
-                      return (
-                        <div
-                          key={ord.id}
-                          className={`p-4 rounded-2xl border transition space-y-3 ${
-                            isPending
-                              ? 'bg-[#15121c] border-amber-800/60 shadow-md'
-                              : 'bg-[#101217] border-gray-800'
-                          }`}
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-800/80">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-sm text-red-500">{ord.id}</span>
-                              <span className="text-xs text-gray-400">
-                                • {new Date(ord.createdAt).toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' })}
-                              </span>
-                              {isPending && (
-                                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 text-amber-400 text-[10px] font-bold rounded-full animate-pulse flex items-center gap-1">
-                                  <Clock className="w-3 h-3" /> যাচাই করুন
-                                </span>
-                              )}
-                              {ord.status === 'Confirmed' && (
-                                <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-[10px] font-bold rounded-full flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3" /> অনুমোদিত (Confirmed)
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {/* Quick Approve Button for Pending Orders */}
-                              {isPending && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveOrder(ord.id)}
-                                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-md shadow-emerald-600/20"
-                                >
-                                  <Check className="w-3.5 h-3.5" /> Approve Order (অ্যাপ্রুভ)
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => handleOpenWhatsApp(ord)}
-                                className="px-2.5 py-1 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-400 border border-emerald-800/60 rounded-lg text-xs font-bold flex items-center gap-1 transition"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
-                              </button>
-
-                              <span className="text-xs text-gray-400">স্ট্যাটাস:</span>
-                              <select
-                                value={ord.status}
-                                onChange={(e) => onUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                                className={`px-2.5 py-1 text-xs font-bold rounded-lg border outline-none cursor-pointer ${
-                                  ord.status === 'Delivered'
-                                    ? 'bg-emerald-950/40 border-emerald-600 text-emerald-400'
-                                    : ord.status === 'Shipped'
-                                    ? 'bg-blue-950/40 border-blue-600 text-blue-400'
-                                    : ord.status === 'Confirmed'
-                                    ? 'bg-amber-950/40 border-amber-600 text-amber-400'
-                                    : isPending
-                                    ? 'bg-yellow-950/40 border-yellow-600 text-yellow-400'
-                                    : 'bg-red-950/40 border-red-600 text-red-400'
-                                }`}
-                              >
-                                <option value="Pending Approval">Pending Approval</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Confirmed">Confirmed</option>
-                                <option value="Shipped">Shipped</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancelled">Cancelled</option>
-                              </select>
-                            </div>
+                    filteredOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="bg-[#101217] border border-gray-800 rounded-2xl p-4 sm:p-5 space-y-4 hover:border-gray-700 transition"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800/80 pb-3">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-red-500 mr-2">
+                              #{order.id}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(order.createdAt).toLocaleString('bn-BD')}
+                            </span>
                           </div>
-
-                          {/* Customer Info & bKash TrxID Verification Highlight */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                            <div>
-                              <p className="text-gray-400 font-medium">কাস্টমার তথ্য:</p>
-                              <p className="font-bold text-white">{ord.customer.fullName}</p>
-                              <p className="text-red-400 font-mono font-semibold">{ord.customer.phone}</p>
-                              {ord.customer.altPhone && (
-                                <p className="text-gray-400 font-mono text-[11px]">Alt: {ord.customer.altPhone}</p>
-                              )}
-                            </div>
-
-                            <div>
-                              <p className="text-gray-400 font-medium">ডেলিভারি ঠিকানা:</p>
-                              <p className="text-gray-200 leading-relaxed">{ord.customer.fullAddress}</p>
-                              <span className="inline-block mt-1 px-2 py-0.5 rounded bg-gray-800 text-[10px] text-gray-300">
-                                এলাকা: {ord.customer.district} (চার্জ: ৳{ord.deliveryCharge})
-                              </span>
-                              {ord.customer.notes && (
-                                <p className="text-amber-300/80 text-[11px] mt-1">নোট: {ord.customer.notes}</p>
-                              )}
-                            </div>
-
-                            {/* Payment & bKash TrxID Verification Box */}
-                            <div className="bg-[#161920] p-3 rounded-xl border border-pink-900/50 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <p className="text-pink-400 font-bold text-[11px]">পেমেন্ট ও TrxID তথ্য:</p>
-                                <span className="text-[10px] px-1.5 py-0.2 bg-pink-950 text-pink-300 border border-pink-800 rounded">
-                                  bKash Send Money
-                                </span>
-                              </div>
-
-                              {transaction ? (
-                                <div className="text-xs space-y-1 pt-1 border-t border-gray-800">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-gray-400 text-[11px]">TrxID:</span>
-                                    <span className="font-mono text-pink-400 font-black text-sm tracking-wider">
-                                      {transaction}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-gray-400 text-[11px]">প্রেরক নম্বর:</span>
-                                    <span className="font-mono text-white font-bold">
-                                      {sender || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
-                                    <span>অগ্রিম প্রদেয় ফি:</span>
-                                    <span className="text-emerald-400 font-bold">৳{ord.deliveryCharge}</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className="text-red-400 text-[11px]">কোনো বিকাশ TrxID পাওয়া যায়নি</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Items Ordered */}
-                          <div className="p-3 bg-[#161920] rounded-xl border border-gray-800/80 space-y-1.5 text-xs">
-                            {ord.items.map((it, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-gray-300">
-                                <span className="flex items-center gap-2">
-                                  <img src={it.image} alt={it.name} className="w-7 h-7 rounded object-cover bg-black" />
-                                  <span>{it.quantity}x {it.name}</span>
-                                </span>
-                                <span className="font-mono font-bold text-white">৳{(it.price * it.quantity).toLocaleString()}</span>
-                              </div>
-                            ))}
-                            <div className="pt-2 border-t border-gray-800 flex justify-between font-bold text-white">
-                              <span className="text-gray-400">
-                                সাবটোটাল: ৳{ord.subtotal.toLocaleString()} | ডেলিভারি চার্জ: ৳{ord.deliveryCharge} 
-                                {ord.discount > 0 && ` | কুপন ছাড়: -৳${ord.discount}`}
-                              </span>
-                              <span className="text-red-400 font-mono text-sm">সর্বমোট: ৳{ord.total.toLocaleString()}</span>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                              order.status === 'Delivered'
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                                : order.status === 'Cancelled'
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                                : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                            }`}>
+                              {order.status}
+                            </span>
                           </div>
                         </div>
-                      );
-                    })
+
+                        {/* Customer & Product details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="text-gray-400 font-semibold mb-1">কাস্টমার তথ্য:</p>
+                            <p className="text-white font-medium">{order.customer.fullName}</p>
+                            <p className="text-gray-300">ফোন: <span className="text-emerald-400 font-mono">{order.customer.phone}</span></p>
+                            <p className="text-gray-300">ঠিকানা: {order.customer.fullAddress}, {order.customer.district}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 font-semibold mb-1">পেমেন্ট ও মূল্য:</p>
+                            <p className="text-white">মোট মূল্য: <strong className="text-red-400">৳{order.total}</strong></p>
+                            <p className="text-gray-300">মেথড: {order.paymentMethod.toUpperCase()}</p>
+                            {order.paymentDetails?.transactionId && (
+                              <p className="text-emerald-400 font-mono">
+                                TrxID: {order.paymentDetails.transactionId} ({order.paymentDetails.senderNumber})
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Status Change Buttons */}
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-800">
+                          <span className="text-xs text-gray-400">স্ট্যাটাস পরিবর্তন:</span>
+                          {(['Pending Approval', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'] as const).map((st) => (
+                            <button
+                              key={st}
+                              onClick={() => onUpdateOrderStatus(order.id, st)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                                order.status === st
+                                  ? 'bg-red-600 text-white'
+                                  : 'bg-[#161920] text-gray-300 hover:text-white border border-gray-800'
+                              }`}
+                            >
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
             )}
 
-            {/* TAB 2: COUPON CODE MANAGER */}
+            {/* TAB 2: COUPONS */}
             {activeTab === 'coupons' && (
-              <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-base font-bold text-white flex items-center gap-2">
-                      <Tag className="w-5 h-5 text-red-500" /> ডিসকাউন্ট কুপন ম্যানেজার
-                    </h4>
-                    <p className="text-xs text-gray-400">
-                      কাস্টমারদের জন্য নতুন প্রোমো কুপন কোড তৈরি করুন অথবা সক্রিয়/নিষ্ক্রিয় করুন।
-                    </p>
-                  </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                <div className="bg-[#101217] border border-gray-800 rounded-2xl p-5">
+                  <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-red-500" /> নতুন ডিসকাউন্ট কুপন তৈরি করুন
+                  </h4>
+                  <form onSubmit={handleAddCoupon} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <input
+                      type="text"
+                      placeholder="কুপন কোড (যেমন: EID2026)"
+                      value={newCouponCode}
+                      onChange={(e) => setNewCouponCode(e.target.value)}
+                      className="px-3.5 py-2 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white uppercase outline-none"
+                    />
+                    <input
+                      type="number"
+                      placeholder="ডিসকাউন্ট পরিমাণ (৳)"
+                      value={newCouponDiscount}
+                      onChange={(e) => setNewCouponDiscount(e.target.value)}
+                      className="px-3.5 py-2 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="বিবরণ (অপশনাল)"
+                      value={newCouponDesc}
+                      onChange={(e) => setNewCouponDesc(e.target.value)}
+                      className="px-3.5 py-2 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition"
+                    >
+                      কুপন যুক্ত করুন
+                    </button>
+                  </form>
                 </div>
 
-                {couponSuccess && (
-                  <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    {couponSuccess}
-                  </div>
-                )}
-
-                {/* Create New Coupon Form */}
-                <form onSubmit={handleAddCoupon} className="p-4 bg-[#101217] border border-gray-800 rounded-2xl space-y-3">
-                  <h5 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Plus className="w-4 h-4 text-red-500" /> নতুন কুপন যুক্ত করুন
-                  </h5>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] text-gray-400 mb-1">কুপন কোড (যেমন: SAVE50) *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="COUPON CODE"
-                        value={newCouponCode}
-                        onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white font-mono uppercase outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] text-gray-400 mb-1">ছাড়ের পরিমাণ (টাকায় ৳) *</label>
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        placeholder="যেমন: 50"
-                        value={newCouponDiscount}
-                        onChange={(e) => setNewCouponDiscount(e.target.value ? Number(e.target.value) : '')}
-                        className="w-full px-3 py-2 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white outline-none font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] text-gray-400 mb-1">বিবরণ (ঐচ্ছিক)</label>
-                      <input
-                        type="text"
-                        placeholder="যেমন: বিশেষ উৎসব ছাড়"
-                        value={newCouponDesc}
-                        onChange={(e) => setNewCouponDesc(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" /> কুপন সেভ করুন
-                  </button>
-                </form>
-
-                {/* Existing Coupons List */}
-                <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                  <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    বিদ্যমান কুপন তালিকা ({coupons.length})
-                  </h5>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {coupons.map((coupon) => (
-                      <div
-                        key={coupon.id}
-                        className={`p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${
-                          coupon.isActive
-                            ? 'bg-[#101217] border-gray-800'
-                            : 'bg-[#101217]/50 border-gray-900 opacity-60'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-sm text-red-500 tracking-wider">
-                              {coupon.code}
-                            </span>
-                            {coupon.isPermanent && (
-                              <span className="text-[10px] px-2 py-0.5 bg-red-950 text-red-400 border border-red-800 rounded-full font-bold">
-                                অফিসিয়াল স্থায়ী
-                              </span>
-                            )}
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                                coupon.isActive
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : 'bg-gray-800 text-gray-400'
-                              }`}
-                            >
-                              {coupon.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                            </span>
-                          </div>
-                          <p className="text-xs font-bold text-emerald-400">৳{coupon.discountAmount} ছাড়</p>
-                          <p className="text-[11px] text-gray-400">{coupon.description || 'নিয়মিত কুপন'}</p>
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-white">সক্রিয় কুপন তালিকা</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {coupons.map((c) => (
+                      <div key={c.id} className="p-4 bg-[#101217] border border-gray-800 rounded-xl flex items-center justify-between">
+                        <div>
+                          <p className="font-mono font-bold text-emerald-400 text-sm">{c.code.toUpperCase()}</p>
+                          <p className="text-xs text-gray-400">ছাড়: ৳{c.discountAmount}</p>
+                          <p className="text-[11px] text-gray-500">{c.description}</p>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleCoupon(coupon.id)}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                              coupon.isActive
-                                ? 'bg-amber-950/40 text-amber-400 border border-amber-800/60'
-                                : 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/60'
-                            }`}
-                          >
-                            {coupon.isActive ? 'বন্ধ করুন' : 'চালু করুন'}
-                          </button>
-
-                          {!coupon.isPermanent && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCoupon(coupon.id)}
-                              className="p-1.5 text-gray-500 hover:text-red-400 rounded-lg transition"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => handleDeleteCoupon(c.id)}
+                          className="p-2 text-gray-400 hover:text-red-400 bg-red-600/10 rounded-lg transition"
+                          title="কুপন ডিলিট"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -748,149 +510,102 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               </div>
             )}
 
-            {/* TAB 3: USER ADVERTISEMENTS & APPROVAL */}
+            {/* TAB 3: MEMBER ADS */}
             {activeTab === 'ads' && (
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="px-6 py-2 bg-[#12141a] border-b border-gray-800 flex items-center gap-2 text-xs">
-                  <span className="text-gray-400">Filter Ads:</span>
-                  <button
-                    onClick={() => setAdFilter('all')}
-                    className={`px-3 py-1 rounded-lg transition ${
-                      adFilter === 'all' ? 'bg-red-600 text-white font-bold' : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    All ({userAds.length})
-                  </button>
-                  <button
-                    onClick={() => setAdFilter('pending')}
-                    className={`px-3 py-1 rounded-lg transition ${
-                      adFilter === 'pending' ? 'bg-red-600 text-white font-bold' : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Pending ({pendingAdsCount})
-                  </button>
-                  <button
-                    onClick={() => setAdFilter('approved')}
-                    className={`px-3 py-1 rounded-lg transition ${
-                      adFilter === 'approved' ? 'bg-red-600 text-white font-bold' : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Approved ({userAds.filter(a => a.status === 'approved').length})
-                  </button>
+                <div className="px-6 py-2.5 bg-[#12141a] border-b border-gray-800 flex items-center gap-2 text-xs">
+                  <span className="text-gray-400">ফিল্টার:</span>
+                  {(['all', 'pending', 'approved'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setAdFilter(filter)}
+                      className={`px-3 py-1 rounded-lg font-semibold transition capitalize ${
+                        adFilter === filter
+                          ? 'bg-red-600 text-white'
+                          : 'text-gray-400 hover:text-white bg-[#161920]'
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                  {userAds.filter(a => adFilter === 'all' || a.status === adFilter).length === 0 ? (
+                  {filteredAds.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                       <Megaphone className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No advertisements found for this filter.</p>
+                      <p className="text-sm">কোনো বিজ্ঞাপন পাওয়া যায়নি।</p>
                     </div>
                   ) : (
-                    userAds
-                      .filter(a => adFilter === 'all' || a.status === adFilter)
-                      .map((ad) => (
-                        <div
-                          key={ad.id}
-                          className="p-4 bg-[#101217] border border-gray-800 rounded-2xl space-y-3"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-gray-800">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-bold text-sm text-white">{ad.title}</h4>
-                                <span
-                                  className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-full border ${
-                                    ad.status === 'approved'
-                                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-700'
-                                      : ad.status === 'rejected'
-                                      ? 'bg-gray-800 text-gray-400 border-gray-700'
-                                      : 'bg-yellow-950/40 text-yellow-400 border-yellow-700 animate-pulse'
-                                  }`}
-                                >
-                                  {ad.status}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-400">
-                                Category: {ad.category} • Asking Price: <strong className="text-red-400 font-mono">৳{ad.price.toLocaleString()}</strong>
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {ad.status !== 'approved' && (
-                                <button
-                                  onClick={() => onUpdateAdStatus(ad.id, 'approved')}
-                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow transition flex items-center gap-1"
-                                >
-                                  <Check className="w-3.5 h-3.5" /> Approve & Publish
-                                </button>
-                              )}
-                              {ad.status !== 'rejected' && (
-                                <button
-                                  onClick={() => onUpdateAdStatus(ad.id, 'rejected')}
-                                  className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg transition"
-                                >
-                                  Reject
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="p-2 bg-[#161920] rounded-xl border border-gray-800">
-                              <span className="text-[10px] font-semibold text-gray-400 block mb-1">Product Photo:</span>
-                              <img src={ad.imageUrl} alt={ad.title} className="w-full h-36 object-cover rounded-lg" />
-                            </div>
-
-                            {ad.videoUrl && (
-                              <div className="p-2 bg-[#161920] rounded-xl border border-gray-800">
-                                <span className="text-[10px] font-semibold text-gray-400 block mb-1 flex items-center gap-1">
-                                  <Video className="w-3.5 h-3.5 text-red-500" /> 10-15s Video Clip:
-                                </span>
-                                <video src={ad.videoUrl} controls className="w-full h-36 object-contain rounded-lg bg-black" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[#161920] rounded-xl border border-gray-800 text-xs">
-                            <div>
-                              <p className="text-gray-400">Seller Info:</p>
-                              <p className="font-bold text-white">{ad.sellerName} ({ad.sellerLocation})</p>
-                              <p className="text-red-400 font-mono">{ad.sellerPhone}</p>
-                              <p className="text-gray-400 mt-1 text-[11px]">{ad.description}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-400">Listing Commission Fee:</p>
-                              <p className="font-bold text-emerald-400 font-mono text-sm">
-                                ৳{ad.feeAmount} bKash Verified
-                              </p>
-                              <p className="text-gray-300 text-[11px] mt-0.5">
-                                Sender: <span className="font-mono text-white">{ad.feeSenderNumber}</span>
-                              </p>
-                              <p className="text-yellow-400 font-mono text-[11px] font-bold">
-                                TrxID: {ad.feeTrxId}
-                              </p>
-                            </div>
+                    filteredAds.map((ad) => (
+                      <div
+                        key={ad.id}
+                        className="bg-[#101217] border border-gray-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 justify-between"
+                      >
+                        <div className="flex gap-4">
+                          <img
+                            src={ad.imageUrl}
+                            alt={ad.title}
+                            className="w-20 h-20 rounded-xl object-cover border border-gray-800 shrink-0"
+                          />
+                          <div className="space-y-1 text-xs">
+                            <h5 className="font-bold text-white text-sm">{ad.title}</h5>
+                            <p className="text-red-400 font-bold">৳{ad.price} | <span className="text-gray-400">{ad.category}</span></p>
+                            <p className="text-gray-300">বিক্রেতা: {ad.sellerName} ({ad.sellerPhone})</p>
+                            <p className="text-emerald-400 font-mono">
+                              ফি: ৳{ad.feeAmount} | bKash TrxID: {ad.feeTrxId} ({ad.feeSenderNumber})
+                            </p>
                           </div>
                         </div>
-                      ))
+
+                        <div className="flex sm:flex-col items-center justify-center gap-2 shrink-0">
+                          {ad.status === 'pending' ? (
+                            <>
+                              <button
+                                onClick={() => onUpdateAdStatus(ad.id, 'approved')}
+                                className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-4 h-4" /> অ্যাপ্রুভ করুন
+                              </button>
+                              <button
+                                onClick={() => onUpdateAdStatus(ad.id, 'rejected')}
+                                className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/40 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                              >
+                                <XCircle className="w-4 h-4" /> বাতিল
+                              </button>
+                            </>
+                          ) : (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                              Approved
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleDeletePost(ad.id, ad.title)}
+                            className="w-full px-3 py-1.5 bg-red-950/40 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/40 rounded-xl text-xs transition flex items-center justify-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> ডিলিট
+                          </button>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
             )}
 
-            {/* TAB 4: NEW - আপলোড করা পোস্ট ডিলিট ও ম্যানেজ (USER ADS ER PASE) */}
+            {/* TAB 4: MANAGE & DELETE POSTS / PRODUCTS */}
             {activeTab === 'manage_posts' && (
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Search & Notice Bar */}
                 <div className="px-6 py-2.5 bg-[#12141a] border-b border-gray-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2 text-gray-300">
                     <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>ওয়েবসাইটে আপলোড করা যেকোনো পোস্ট বা প্রোডাক্ট এখান থেকে সরাসরি মুছে ফেলতে পারেন।</span>
+                    <span>এখান থেকে পোস্ট ডিলিট করলে কম্পিউটার ও মোবাইল উভয় জায়গা থেকেই তাৎক্ষণিকভাবে মুছে যাবে।</span>
                   </div>
 
                   <div className="relative w-full sm:w-64">
                     <input
                       type="text"
-                      placeholder="পোস্টের নাম বা ক্যাটাগরি দিয়ে খুঁজুন..."
+                      placeholder="নাম বা ক্যাটাগরি দিয়ে খুঁজুন..."
                       value={postSearch}
                       onChange={(e) => setPostSearch(e.target.value)}
                       className="w-full pl-7 pr-2.5 py-1.5 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-lg text-xs text-white outline-none"
@@ -899,7 +614,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   </div>
                 </div>
 
-                {/* Delete success notification */}
                 {postDeleteSuccess && (
                   <div className="mx-6 mt-3 p-3 bg-red-950/50 border border-red-800/80 rounded-xl text-xs text-red-300 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -907,7 +621,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   </div>
                 )}
 
-                {/* Post List / Cards with Inside Details & Delete Button */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                   {filteredUploadedPosts.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
@@ -927,7 +640,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             className="bg-[#101217] border border-gray-800 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-gray-700 transition shadow-lg"
                           >
                             <div className="space-y-2.5">
-                              {/* Post Thumbnail */}
                               <div className="relative aspect-video rounded-xl overflow-hidden bg-black/60 border border-gray-800">
                                 <img
                                   src={postImage}
@@ -941,37 +653,21 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                 )}
                               </div>
 
-                              {/* Title & Description Inside the Post */}
                               <div>
-                                <h4 className="font-bold text-sm text-white line-clamp-1">{postTitle}</h4>
-                                <p className="text-xs text-gray-400 line-clamp-2 mt-1">
-                                  {post.description || 'বিবরণ দেওয়া নেই।'}
+                                <h5 className="font-bold text-sm text-white line-clamp-1">
+                                  {postTitle}
+                                </h5>
+                                <p className="text-xs text-red-400 font-bold mt-0.5">
+                                  ৳{postPrice}
                                 </p>
-                              </div>
-
-                              {/* Price & Stock info */}
-                              <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/80">
-                                <div>
-                                  <span className="text-[10px] text-gray-500 block">মূল্য:</span>
-                                  <span className="font-bold text-red-500 font-mono text-sm">৳{postPrice.toLocaleString()}</span>
-                                </div>
-                                {post.stock !== undefined && (
-                                  <div className="text-right">
-                                    <span className="text-[10px] text-gray-500 block">স্টক:</span>
-                                    <span className="text-gray-300 font-semibold">{post.stock} টি</span>
-                                  </div>
-                                )}
                               </div>
                             </div>
 
-                            {/* Direct Delete / Remove Post Action */}
                             <button
-                              type="button"
                               onClick={() => handleDeletePost(post.id, postTitle)}
-                              className="w-full py-2 bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/60 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+                              className="w-full py-2 bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>পোস্টটি ডিলিট করুন (Remove Post)</span>
+                              <Trash2 className="w-3.5 h-3.5" /> ডেটাবেস থেকে ডিলিট
                             </button>
                           </div>
                         );
@@ -981,7 +677,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               </div>
             )}
-
           </div>
         )}
       </div>
