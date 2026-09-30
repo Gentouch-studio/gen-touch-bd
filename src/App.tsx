@@ -351,7 +351,9 @@ export function App() {
 
     setNotifications((prev) => [adminNotif, userNotif, ...prev]);
   };
-
+const handleAddProduct = (newProduct: Product) => {
+    setProducts((prev) => [newProduct, ...prev]);
+  };
   const handleSubmitAd = (newAd: UserAd) => {
     setUserAds((prev) => [newAd, ...prev]);
 
