@@ -238,8 +238,9 @@ export const App: React.FC = () => {
       const saved = localStorage.getItem('gentouch_wishlist');
       return saved ? JSON.parse(saved) : [];
     } catch {
-      return [];
+      // ignore
     }
+    return [];
   });
 
   // Modals
@@ -527,14 +528,18 @@ export const App: React.FC = () => {
     );
   };
 
-  // Filter products
-  const filteredProducts = products.filter((item) => {
+  // Safe Guarded Filter Products - prevents any crashes
+  const filteredProducts = (products || []).filter((item) => {
+    if (!item || typeof item !== 'object') return false;
+    const itemCat = String(item.category || '');
     const matchesCategory =
-      selectedCategory === 'All Products' || item.category === selectedCategory;
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+      selectedCategory === 'All Products' || itemCat === selectedCategory;
+    const q = (searchQuery || '').toLowerCase().trim();
+    if (!q) return matchesCategory;
+    const nameStr = String(item.name || '').toLowerCase();
+    const descStr = String(item.description || '').toLowerCase();
+    const catStr = itemCat.toLowerCase();
+    return matchesCategory && (nameStr.includes(q) || descStr.includes(q) || catStr.includes(q));
   });
 
   const categories = [
@@ -760,6 +765,7 @@ export const App: React.FC = () => {
               )}
             </button>
 
+            {/* Profile & Admin Access Button */}
             <button
               onClick={() => setIsAuthModalOpen(true)}
               className="p-2.5 text-gray-300 hover:text-white bg-[#161920] hover:bg-gray-800 rounded-xl border border-gray-800 transition flex items-center gap-1.5"
@@ -901,7 +907,7 @@ export const App: React.FC = () => {
         items={cartItems}
         onUpdateQuantity={handleUpdateCartQuantity}
         onRemoveItem={handleRemoveFromCart}
-        onCheckoutSuccess={handleCheckoutSuccess}
+        onCreateOrder={handleCheckoutSuccess}
         activeCoupon={activeCoupon}
       />
 
