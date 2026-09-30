@@ -3,7 +3,9 @@ import {
   doc, 
   setDoc, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot, 
+  query, 
+  orderBy 
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, UserAd } from '../types';
@@ -11,8 +13,13 @@ import { Product, UserAd } from '../types';
 const PRODUCTS_COLLECTION = 'products';
 const USER_ADS_COLLECTION = 'user_ads';
 
+// Helper to remove undefined fields that Firestore rejects
+const cleanData = (obj: any): any => {
+  return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined ? null : v)));
+};
+
 export const productService = {
-  // ১. রিয়েল-টাইমে অল প্রোডাক্ট সিঙ্ক (মোবাইল ও পিসিতে একই সাথে আপডেট হবে)
+  // 1. রিয়েল-টাইমে অল প্রোডাক্ট সিঙ্ক (মোবাইল ও পিসিতে একই সাথে আপডেট হবে)
   subscribeToProducts: (callback: (products: Product[]) => void) => {
     try {
       const q = collection(db, PRODUCTS_COLLECTION);
@@ -24,7 +31,7 @@ export const productService = {
             localStorage.setItem('gentouch_products', JSON.stringify(remoteProducts));
             localStorage.setItem('gen_touch_custom_products', JSON.stringify(remoteProducts));
           } catch {
-            // ignore storage errors
+            // ignore storage quota errors safely
           }
         }
       }, (error) => {
@@ -36,7 +43,7 @@ export const productService = {
     }
   },
 
-  // ২. রিয়েল-টাইমে কমিউনিটি এডস সিঙ্ক
+  // 2. রিয়েল-টাইমে কমিউনিটি এডস সিঙ্ক
   subscribeToUserAds: (callback: (ads: UserAd[]) => void) => {
     try {
       const q = collection(db, USER_ADS_COLLECTION);
@@ -47,7 +54,7 @@ export const productService = {
           try {
             localStorage.setItem('gentouch_user_ads', JSON.stringify(remoteAds));
           } catch {
-            // ignore storage errors
+            // ignore storage quota errors safely
           }
         }
       }, (error) => {
@@ -59,27 +66,27 @@ export const productService = {
     }
   },
 
-  // ৩. এডমিন সরাসরি অল প্রোডাক্টে নতুন প্রোডাক্ট সেভ করা
+  // 3. এডমিন সরাসরি অল প্রোডাক্টে নতুন প্রোডাক্ট সেভ করা (Undefined মুক্ত ও সুরক্ষিত)
   saveProduct: async (product: Product): Promise<void> => {
     try {
       const docRef = doc(db, PRODUCTS_COLLECTION, product.id);
-      await setDoc(docRef, product);
+      await setDoc(docRef, cleanData(product));
     } catch (error) {
       console.warn('Failed to save product to Firestore, using local fallback:', error);
     }
   },
 
-  // ৪. সাধারণ মেম্বারের বিজ্ঞাপন সেভ করা
+  // 4. সাধারণ মেম্বারের বিজ্ঞাপন সেভ করা (Undefined মুক্ত ও সুরক্ষিত)
   saveUserAd: async (ad: UserAd): Promise<void> => {
     try {
       const docRef = doc(db, USER_ADS_COLLECTION, ad.id);
-      await setDoc(docRef, ad);
+      await setDoc(docRef, cleanData(ad));
     } catch (error) {
       console.warn('Failed to save ad to Firestore, using local fallback:', error);
     }
   },
 
-  // ৫. কম্পিউটার বা মোবাইল যেকোনো ডিভাইস থেকে পার্মানেন্টলি ডিলিট করা
+  // 5. কম্পিউটার বা মোবাইল যেকোনো ডিভাইস থেকে পার্মানেন্টলি ডিলিট করা
   deleteProductOrAd: async (id: string): Promise<void> => {
     try {
       // Products কালেকশন থেকে ডিলিট
@@ -96,5 +103,52 @@ export const productService = {
     } catch (error) {
       console.warn('Could not delete from ads collection:', error);
     }
+  },
+
+  // 6. অল প্রোডাক্ট থেকে নির্দিষ্ট প্রোডাক্ট ডিলিট করা
+  deleteProduct: async (id: string): Promise<void> => {
+    try {
+      const productRef = doc(db, PRODUCTS_COLLECTION, id);
+      await deleteDoc(productRef);
+    } catch (error) {
+      console.warn('Error deleting product from Firestore:', error);
+    }
+  },
+
+  // 7. ইউজার এড ডিলিট করা
+  deleteUserAd: async (id: string): Promise<void> => {
+    try {
+      const adRef = doc(db, USER_ADS_COLLECTION, id);
+      await deleteDoc(adRef);
+    } catch (error) {
+      console.warn('Error deleting ad from Firestore:', error);
+    }
+  },
+
+  // 8. ক্লাউড থেকে সব প্রোডাক্ট সরাসরি লোড করা
+  getProducts: async (): Promise<Product[]> => {
+    try {
+      const snapshot = await new Promise<any>((resolve) => {
+        const q = collection(db, PRODUCTS_COLLECTION);
+        const unsubscribe = onSnapshot(q, (s) => {
+          unsubscribe();
+          resolve(s);
+        }, () => resolve({ empty: true, docs: [] }));
+      });
+
+      if (!snapshot.empty) {
+        return snapshot.docs.map((d: any) => d.data() as Product);
+      }
+    } catch (e) {
+      console.warn('Could not fetch cloud products:', e);
+    }
+
+    try {
+      const local = localStorage.getItem('gentouch_products');
+      if (local) return JSON.parse(local);
+    } catch {
+      // ignore
+    }
+    return [];
   }
 };
