@@ -1,265 +1,219 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ShoppingBag, Bell, Search, User, Sparkles, 
-  Gamepad2, Plus, ArrowRight 
+  ShoppingBag, 
+  Search, 
+  SlidersHorizontal, 
+  Plus, 
+  Sparkles, 
+  ShieldCheck, 
+  Truck, 
+  Headphones, 
+  RotateCcw,
+  Tag,
+  Gamepad2,
+  Lock,
+  Heart
 } from 'lucide-react';
-import type { Product, ProductCategory, CartItem, Order, UserAd, NotificationItem, GameCoupon, ProductReview, OrderStatus } from "./types";
-import { WhatsAppButton } from './components/WhatsAppButton';
+import { Product, CartItem, UserAd, Order, NotificationItem, Coupon } from './types';
 import { ProductCard } from './components/ProductCard';
-import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { CartDrawer } from './components/CartDrawer';
-import { CarGameModal } from './components/CarGameModal';
+import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { UserAdModal } from './components/UserAdModal';
-import { NotificationModal } from './components/NotificationModal';
+import { TurboRaceGame } from './components/TurboRaceGame';
 import { AdminModal } from './components/AdminModal';
-import { UserAdSection } from './components/UserAdSection';
-import { Footer } from './components/Footer';
-import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { NotificationCenter } from './components/NotificationCenter';
 import { productService } from './services/productService';
 
 // Initial Curated Products for GEN-TOUCH
 const INITIAL_PRODUCTS: Product[] = [
   {
-    id: 'gt-audio-01',
-    name: 'Edifier W820NB Plus ANC Wireless Headphones',
+    id: 'gt-01',
+    name: 'AcousticPro ANC Active Noise Cancelling Headset',
     category: 'Electronics & Gadgets',
-    price: 4850,
-    originalPrice: 5800,
+    price: 3499,
+    originalPrice: 4800,
     rating: 4.9,
-    ratingCount: 142,
+    ratingCount: 28,
     inStock: true,
-    stockCount: 18,
+    stockCount: 15,
     badge: 'Best Seller',
-    image: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=60',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
     galleryImages: [
-      'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&auto=format&fit=crop&q=60'
+      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+      'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&q=80',
     ],
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    description: 'LDAC certified Hi-Res Wireless active noise cancelling headphones with up to 49 hours of non-stop battery life, crystal-clear 40mm titanium diaphragm drivers, and ultra-comfortable ergonomic protein ear cushions.',
-    features: [
-      '-43dB Hybrid Active Noise Cancellation with ambient sound awareness',
-      'LDAC Hi-Res Audio wireless transmission code for studio-grade acoustic depth',
-      '0.08s Ultra-Low latency gaming and movie mode with synchronized precision',
-      'DNN crystal-clear voice ENC dual microphone calling filters background wind'
-    ],
-    reviews: [
-      {
-        id: 'rev-1',
-        userName: 'Zubair Al Mahmud',
-        rating: 5,
-        comment: 'The ANC performance at this price point is truly unbeatable in Bangladesh. Sounds deep, punchy and bass is immaculate!',
-        date: '2025-05-10',
-        verified: true,
-      },
-      {
-        id: 'rev-2',
-        userName: 'Sabbir Rahman',
-        rating: 4.8,
-        comment: 'Received within 24 hours inside Dhaka! Original Edifier authentic hologram included on box.',
-        date: '2025-05-08',
-        verified: true,
-      }
-    ]
+    description: 'High-fidelity audio drivers engineered with deep bass matrix, hybrid -35dB active noise cancellation, and 40 hours battery endurance.',
+    features: ['Hybrid Active Noise Cancelling', '40-Hour Battery Life', 'Bluetooth 5.3 Low Latency', 'Memory Foam Earcups'],
   },
   {
-    id: 'gt-mech-02',
-    name: 'Royal Kludge RK61 Pro Wireless Hot-Swap RGB Mechanical Keyboard',
+    id: 'gt-02',
+    name: 'Stealth Horizon Smartwatch Series 9 (AMOLED)',
     category: 'Electronics & Gadgets',
-    price: 4350,
-    originalPrice: 5200,
+    price: 2850,
+    originalPrice: 3600,
     rating: 4.8,
-    ratingCount: 98,
+    ratingCount: 42,
     inStock: true,
-    stockCount: 14,
-    badge: 'Top Pick',
-    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=60',
+    stockCount: 8,
+    badge: 'Trending',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
     galleryImages: [
-      'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=800&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&auto=format&fit=crop&q=60'
+      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+      'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=800&q=80',
     ],
-    description: 'Compact 60% mechanical gaming keyboard engineered with CNC aluminum frame, pre-lubed mechanical switches, triple-mode wireless connectivity (Bluetooth 5.0 / 2.4Ghz / Type-C), and dynamic per-key RGB backlight.',
-    features: [
-      'CNC milled solid aircraft-grade aerospace aluminum frame structure',
-      'Triple-mode seamless connectivity: Bluetooth 5.0, 2.4GHz dongle, and braided Type-C',
-      'Fully hot-swappable 3-pin and 5-pin mechanical switch PCB layout',
-      'Vibrant south-facing 16.8M RGB backlighting effects with software macro mapping'
-    ],
-    reviews: [
-      {
-        id: 'rev-3',
-        userName: 'Tanvir Hossain',
-        rating: 5,
-        comment: 'Super heavy aluminum casing gives premium thocky sound right out of the box!',
-        date: '2025-05-02',
-        verified: true,
-      }
-    ]
+    description: 'Ultra-thin aerospace aluminum alloy frame with 1.96-inch curved AMOLED always-on display, SpO2 sensor, and Bluetooth calling.',
+    features: ['AMOLED Always-On Display', 'Bluetooth Calling & Mic', 'Heart Rate & Sleep Tracking', 'IP68 Water Resistance'],
   },
   {
-    id: 'gt-smart-03',
-    name: 'Haylou Solar Pro Smartwatch with Bluetooth Calling & AMOLED',
+    id: 'gt-03',
+    name: 'Apex Mechanical RGB Gaming Keyboard (Hot-Swap)',
     category: 'Electronics & Gadgets',
-    price: 3650,
-    originalPrice: 4400,
+    price: 3199,
+    originalPrice: 4200,
+    rating: 4.95,
+    ratingCount: 19,
+    inStock: true,
+    stockCount: 5,
+    badge: 'Popular',
+    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
+      'https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80',
+    ],
+    description: 'Compact 75% mechanical keyboard fitted with factory lubed linear red switches, per-key RGB backlighting, and sound-dampening foam.',
+    features: ['Hot-Swappable 5-Pin PCB', 'Sound Dampening Silicone Pads', 'South-Facing Per-Key RGB', 'Type-C Braided Cable'],
+  },
+  {
+    id: 'gt-04',
+    name: 'Falcon 4K UHD Dual-Camera GPS Drone',
+    category: 'Electronics & Gadgets',
+    price: 8990,
+    originalPrice: 12500,
     rating: 4.7,
-    ratingCount: 84,
+    ratingCount: 14,
+    inStock: true,
+    stockCount: 4,
+    badge: 'Flash Deal',
+    image: 'https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?w=800&q=80',
+      'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&q=80',
+    ],
+    description: 'Intelligent obstacle-sensing drone equipped with 3-axis gimbal stabilized 4K video recording, 32-minute flight time, and auto return-to-home.',
+    features: ['4K 60FPS Gimbal Camera', '32 Min Extended Flight', 'GPS Auto-Return Home', 'Optical Flow Hovering'],
+  },
+  {
+    id: 'gt-05',
+    name: 'Titanium Polarized UV400 Aviator Sunglasses',
+    category: 'Fashion & Lifestyle',
+    price: 1250,
+    originalPrice: 1950,
+    rating: 4.85,
+    ratingCount: 37,
     inStock: true,
     stockCount: 22,
-    badge: 'Popular',
-    image: 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800&auto=format&fit=crop&q=60',
+    badge: 'Hot',
+    image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&q=80',
     galleryImages: [
-      'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=60'
+      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&q=80',
+      'https://images.unsplash.com/photo-1508296695146-257a814070b4?w=800&q=80',
     ],
-    description: '1.43-inch High Definition AMOLED touchscreen display with Always-On Mode, anti-sedentary military durability, anti-scratch sapphire coating, real-time SpO2 and continuous optical heart rate monitoring sensors.',
-    features: [
-      '1.43" Vivid Ultra Retina AMOLED display with 466x466 high pixel density',
-      'One-tap Bluetooth calling support with noise-canceling digital speaker',
-      '100+ Professional sports tracking modes and 24H sleep science monitoring',
-      'IP68 Certified dust & water resistance rating for rainy rides and workouts'
-    ],
-    reviews: [
-      {
-        id: 'rev-4',
-        userName: 'Nafis Anjum',
-        rating: 4.8,
-        comment: 'Battery lasts almost 8 days easily. Screen brightness outdoors in daylight is super crisp.',
-        date: '2025-05-04',
-        verified: true,
-      }
-    ]
+    description: 'Precision engineered ultralight titanium frame with TAC polarized 9-layer glare protection lenses for driving and outdoors.',
+    features: ['100% UV400 Protection', 'TAC Polarized 9-Layer Lens', 'Ultralight Titanium Frame', 'Anti-Slip Silicone Nose Pads'],
   },
   {
-    id: 'gt-auto-04',
-    name: '70mai Smart Dash Cam Pro Plus+ A500S Dual Vision with Built-in GPS',
-    category: 'Automotive Tech',
-    price: 8900,
-    originalPrice: 10500,
-    rating: 5.0,
-    ratingCount: 67,
+    id: 'gt-06',
+    name: 'Precision Barista Electric Coffee Bean Grinder',
+    category: 'Home & Kitchen',
+    price: 2450,
+    originalPrice: 3200,
+    rating: 4.9,
+    ratingCount: 16,
     inStock: true,
-    stockCount: 9,
-    badge: 'Pro Tier',
-    image: 'https://images.unsplash.com/photo-1508974239320-0a029497e820?w=800&auto=format&fit=crop&q=60',
+    stockCount: 10,
+    image: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80',
     galleryImages: [
-      'https://images.unsplash.com/photo-1508974239320-0a029497e820?w=800&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=60'
+      'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80',
     ],
-    description: 'State of the art 1944P Ultra HD front recording and 1080P rear dual-channel camera powered by Sony IMX335 image sensors with Advanced Driver Assistance Systems (ADAS) and G-Sensor automated incident loop recording.',
-    features: [
-      '2.7K 1944P front + 1080P rear HDR dual-channel recording synchronized',
-      'Sony IMX335 Sensor with 3D DNR and WDR night-vision algorithm',
-      'Real-time ADAS alerts: Lane departure warning and forward collision caution',
-      'Built-in GPS & GLONASS tracks speed, location coordinates, and route logs'
-    ],
-    reviews: [
-      {
-        id: 'rev-5',
-        userName: 'Capt. Ariful Islam',
-        rating: 5.0,
-        comment: 'Night video quality on highway driving is extremely clear. Must have security device for all car owners!',
-        date: '2025-05-11',
-        verified: true,
-      }
-    ]
+    description: 'Conical stainless steel burr mechanism offering 31 grind adjustments from ultra-fine espresso to coarse French press consistency.',
+    features: ['Stainless Conical Burrs', '31 Precise Grind Settings', 'One-Touch Timer Control', 'Anti-Static Grind Chamber'],
   },
   {
-    id: 'gt-auto-05',
-    name: 'Baseus 65W GaN Car Charger with Digital Voltage Display',
-    category: 'Automotive Tech',
+    id: 'gt-07',
+    name: 'MagSafe 10000mAh Ultra-Slim Wireless Power Bank',
+    category: 'Electronics & Gadgets',
     price: 1850,
     originalPrice: 2400,
     rating: 4.8,
-    ratingCount: 115,
+    ratingCount: 51,
     inStock: true,
     stockCount: 30,
-    badge: 'Must Have',
-    image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=60',
+    badge: 'Best Seller',
+    image: 'https://images.unsplash.com/photo-1609592424360-15497ff4f333?w=800&q=80',
     galleryImages: [
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=60'
+      'https://images.unsplash.com/photo-1609592424360-15497ff4f333?w=800&q=80',
     ],
-    description: 'Super-fast 65W GaN charging adapter for vehicles with Type-C and USB dual-port fast charge capability. Powers MacBooks, laptops, iPhones, and Android devices at full fast charge speed.',
-    features: [
-      '65W High Power GaN fast charging architecture fits standard 12V-24V car sockets',
-      'Dual output Type-C + USB handles laptop and flagship mobile simultaneous charging',
-      'Intelligent LED digital display displays real-time battery voltage monitoring',
-      'Multiple safety protections preventing over-current, over-voltage, and short circuits'
-    ],
-    reviews: []
+    description: 'Snap-on magnetic wireless charging with 20W PD Type-C fast bi-directional charging port and digital LED percentage display.',
+    features: ['15W MagSafe Wireless', '20W PD Fast Charging', 'Digital Battery % LED', 'Airline Approved Capacity'],
   },
   {
-    id: 'gt-lifestyle-06',
-    name: 'Anker Soundcore Motion+ 30W Hi-Res Bluetooth Speaker',
-    category: 'Electronics & Gadgets',
-    price: 11200,
-    originalPrice: 13500,
-    rating: 4.9,
-    ratingCount: 53,
+    id: 'gt-08',
+    name: 'Nordic Minimalist Oak & Metal Desk Organizer Lamp',
+    category: 'Home & Kitchen',
+    price: 1950,
+    originalPrice: 2800,
+    rating: 4.75,
+    ratingCount: 22,
     inStock: true,
-    stockCount: 8,
-    badge: 'Audiophile',
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=800&auto=format&fit=crop&q=60',
+    stockCount: 12,
+    image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80',
     galleryImages: [
-      'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=800&auto=format&fit=crop&q=60'
+      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80',
     ],
-    description: 'Ultra-wide frequency range Bluetooth speaker loaded with Qualcomm aptX, BassUp acoustic calibration, customizable pro EQ in Soundcore app, and IPX7 fully waterproof construction.',
-    features: [
-      'Hi-Res Audio Certified with Qualcomm aptX lossless streaming reproduction',
-      'Two ultra-high frequency tweeters + neodymium woofers pumped by 30W amplifiers',
-      'BassUp technology boosts low-end frequencies in real-time without distortion',
-      'IPX7 certified waterproof casing ready for pool parties, beach trips and tours'
-    ],
-    reviews: []
+    description: 'Scandinavian warm LED ambient illumination with integrated pen docks, smartphone wireless charging pad, and touch stepless dimming.',
+    features: ['3 Color Temperatures', 'Touch Stepless Dimming', 'Wireless Phone Dock', 'Solid Oak Wood Base'],
   }
 ];
 
-// Initial user classified ads for testing
 const INITIAL_USER_ADS: UserAd[] = [
   {
-    id: 'uad-01',
-    title: 'Sony WH-1000XM4 Noise Cancelling Headphones (Gently Used)',
+    id: 'ad-01',
+    title: 'Sony PlayStation 5 Disc Edition (with 2 DualSense)',
     category: 'Electronics & Gadgets',
-    price: 21500,
-    originalPrice: 32000,
-    condition: 'Used - Like New',
-    description: 'Used for about 4 months with utmost care. Battery health is great, 28+ hours with ANC on. Full box with travel case and original aux cable available.',
-    images: [
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60'
-    ],
-    sellerName: 'Tanvir Ahmed',
+    price: 54000,
+    originalPrice: 65000,
+    sellerName: 'Tanvir Hossain',
     sellerPhone: '01711223344',
-    sellerLocation: 'Dhanmondi, Dhaka',
-    bkashTrxId: 'BL98437291',
-    status: 'approved',
-    createdAt: '2025-05-11 04:30 PM',
+    sellerLocation: 'Dhanmondi 27, Dhaka',
+    condition: 'Like New',
+    description: 'Barely 4 months used, pristine condition with box, power cord, 2 controllers, and FIFA 24 disc.',
+    image: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&q=80',
+    status: 'active',
+    createdAt: '2025-05-10',
+    views: 142,
   },
   {
-    id: 'uad-02',
-    title: 'Logitech G502 HERO High Performance Gaming Mouse',
+    id: 'ad-02',
+    title: 'Apple MacBook Air M2 (16GB RAM / 512GB SSD)',
     category: 'Electronics & Gadgets',
-    price: 3200,
-    originalPrice: 4900,
-    condition: 'Used - Good',
-    description: 'HERO 25K optical sensor with customizable tuning weights included. RGB lighting works perfect with Logitech G HUB software.',
-    images: [
-      'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=800&auto=format&fit=crop&q=60'
-    ],
-    sellerName: 'Mahir Faysal',
-    sellerPhone: '01822334455',
-    sellerLocation: 'Uttara Sector 11, Dhaka',
-    bkashTrxId: 'BK33918274',
-    status: 'approved',
-    createdAt: '2025-05-12 10:15 AM',
+    price: 118000,
+    originalPrice: 145000,
+    sellerName: 'Rafiqul Islam',
+    sellerPhone: '01899887766',
+    sellerLocation: 'Mirpur DOHS, Dhaka',
+    condition: 'Used',
+    description: 'Midnight color, 97% battery health, original 35W dual charger with warranty receipt.',
+    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&q=80',
+    status: 'active',
+    createdAt: '2025-05-12',
+    views: 89,
   }
 ];
 
 export function App() {
   // Products
   const [products, setProducts] = useState<Product[]>(() => {
-  try {
+    try {
       const saved = localStorage.getItem('gentouch_products');
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -298,13 +252,11 @@ export function App() {
   // Modals
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
-  const [isGameOpen, setIsGameOpen] = useState<boolean>(false);
   const [isPostAdOpen, setIsPostAdOpen] = useState<boolean>(false);
-  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const [isGameOpen, setIsGameOpen] = useState<boolean>(false);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // User Ads
+  // User Classified Ads
   const [userAds, setUserAds] = useState<UserAd[]>(() => {
     try {
       const saved = localStorage.getItem('gentouch_user_ads');
@@ -329,54 +281,46 @@ export function App() {
         customer: {
           name: 'Tanzim Taj',
           phone: '01310588979',
-          address: 'Mirpur DOHS, Road 4',
-          district: 'Dhaka',
+          address: 'GEN-TOUCH HQ, Dhaka',
+          city: 'Dhaka',
         },
         items: [
           {
             product: INITIAL_PRODUCTS[0],
             quantity: 1,
+            selectedColor: 'Matte Obsidian',
           },
         ],
-        total: 3559,
+        totalAmount: 3499,
         paymentMethod: 'bKash',
-        paymentTrxId: 'BK79182390',
-        paymentNumber: '01310588979',
-        status: 'Confirmed',
-        createdAt: '2025-05-12 12:40 PM',
+        status: 'Delivered',
+        date: '2025-05-14',
       },
     ];
   });
 
   // Notifications
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'notif-1',
-      title: '🎉 Welcome to GEN-TOUCH!',
-      message: 'Enjoy fast home delivery across Bangladesh & 100% original quality gear.',
-      type: 'promo',
-      timestamp: 'Just now',
-      read: false,
-      forRole: 'all',
-    },
-    {
-      id: 'notif-2',
-      title: '🏎️ Play Turbo Racer to Win ৳30!',
-      message: 'Compete in the mini sports car game to earn instant coupon discounts.',
-      type: 'game',
-      timestamp: '1 hour ago',
-      read: false,
-      forRole: 'user',
-    },
-  ]);
-
-  // Admin state
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    return sessionStorage.getItem('gentouch_is_admin') === 'true';
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('gentouch_notifications');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [
+      {
+        id: '1',
+        title: '🎉 Welcome to GEN-TOUCH!',
+        message: 'Claim ৳10 off your first purchase using coupon code ilovegentouch.',
+        timestamp: 'Just now',
+        read: false,
+        type: 'promo',
+      },
+    ];
   });
 
-  // Active coupon from Game or promos
-  const [activeCoupon, setActiveCoupon] = useState<GameCoupon | null>(() => {
+  // Active Coupon
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(() => {
     try {
       const saved = localStorage.getItem('gentouch_active_coupon');
       if (saved) return JSON.parse(saved);
@@ -404,7 +348,7 @@ export function App() {
     };
   }, []);
 
-  // Persistent storage updates (Protected against QuotaExceededError)
+  // Sync to local storage
   useEffect(() => {
     try {
       localStorage.setItem('gentouch_products', JSON.stringify(products));
@@ -430,40 +374,50 @@ export function App() {
   }, [orders]);
 
   useEffect(() => {
-    if (activeCoupon) {
-      localStorage.setItem('gentouch_active_coupon', JSON.stringify(activeCoupon));
-    }
-  }, [activeCoupon]);
+    localStorage.setItem('gentouch_notifications', JSON.stringify(notifications));
+  }, [notifications]);
 
-  // Cart operations
-  const handleAddToCart = (product: Product, quantity = 1) => {
+  useEffect(() => {
+    if (appliedCoupon) {
+      localStorage.setItem('gentouch_active_coupon', JSON.stringify(appliedCoupon));
+    } else {
+      localStorage.removeItem('gentouch_active_coupon');
+    }
+  }, [appliedCoupon]);
+
+  // Cart Operations
+  const handleAddToCart = (product: Product, quantity = 1, color?: string) => {
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
+      const existing = prev.find(
+        (item) => item.product.id === product.id && item.selectedColor === color
+      );
       if (existing) {
         return prev.map((item) =>
-          item.product.id === product.id
+          item.product.id === product.id && item.selectedColor === color
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, quantity, selectedColor: color }];
     });
     setIsCartOpen(true);
   };
 
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      handleRemoveItem(productId);
-      return;
-    }
+  const handleUpdateQuantity = (productId: string, delta: number) => {
     setCartItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
+      prev
+        .map((item) => {
+          if (item.product.id === productId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
     );
   };
 
-  const handleRemoveItem = (productId: string) => {
+  const handleRemoveFromCart = (productId: string) => {
     setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
@@ -473,37 +427,55 @@ export function App() {
     );
   };
 
-  // Orders
-  const handleCheckoutSuccess = (order: Order) => {
-    setOrders((prev) => [order, ...prev]);
-    setCartItems([]);
-    if (activeCoupon) {
-      setActiveCoupon(null);
-      localStorage.removeItem('gentouch_active_coupon');
+  const handleQuickView = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDetailsOpen(true);
+  };
+
+  const handleApplyCoupon = (code: string): { success: boolean; message: string } => {
+    const clean = code.trim().toLowerCase();
+    if (clean === 'ilovegentouch') {
+      const coupon: Coupon = {
+        code: 'ilovegentouch',
+        discountType: 'fixed',
+        discountAmount: 10,
+        description: 'Special Community Discount',
+      };
+      setAppliedCoupon(coupon);
+      return { success: true, message: '৳10 discount coupon applied successfully!' };
     }
+    if (clean.startsWith('turbo-') || clean.startsWith('turbowin')) {
+      const coupon: Coupon = {
+        code: clean,
+        discountType: 'fixed',
+        discountAmount: 30,
+        description: 'Turbo Race Winner Voucher',
+      };
+      setAppliedCoupon(coupon);
+      return { success: true, message: '৳30 Turbo Race Champion Voucher Applied!' };
+    }
+    return { success: false, message: 'Invalid or expired coupon code.' };
+  };
 
-    // Add notifications
-    const adminAlert: NotificationItem = {
-      id: `notif-ord-${Date.now()}`,
-      title: `🛒 New Order: #${order.id}`,
-      message: `${order.customer.name} ordered items worth ৳${order.total} via ${order.paymentMethod}.`,
-      type: 'order',
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+  };
+
+  const handleCheckoutComplete = (newOrder: Order) => {
+    setOrders((prev) => [newOrder, ...prev]);
+    setCartItems([]);
+    setAppliedCoupon(null);
+
+    // Notify user
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      title: '📦 Order Placed Successfully!',
+      message: `Your order #${newOrder.id} of ৳${newOrder.totalAmount.toLocaleString()} has been placed. We will contact you soon.`,
       timestamp: 'Just now',
       read: false,
-      forRole: 'admin',
-    };
-
-    const userNotif: NotificationItem = {
-      id: `notif-user-${Date.now()}`,
-      title: '✅ Order Placed Successfully!',
-      message: `Your order for ৳${order.total} has been placed. We are verifying it.`,
       type: 'order',
-      timestamp: 'Just now',
-      read: false,
-      forRole: 'user',
     };
-
-    setNotifications((prev) => [adminAlert, userNotif, ...prev]);
+    setNotifications((prev) => [notif, ...prev]);
   };
 
   const handleAddProduct = async (newProduct: Product) => {
@@ -527,470 +499,547 @@ export function App() {
     const adNotif: NotificationItem = {
       id: `notif-ad-${Date.now()}`,
       title: '📢 New Classified Ad Submitted',
-      message: `${newAd.sellerName} posted "${newAd.title}" with TrxID: ${newAd.bkashTrxId}. Verification needed.`,
-      type: 'ad',
+      message: `User ad "${newAd.title}" submitted by ${newAd.sellerName}.`,
       timestamp: 'Just now',
       read: false,
-      forRole: 'admin',
+      type: 'info',
     };
     setNotifications((prev) => [adNotif, ...prev]);
   };
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
-  };
+  // Filter products
+  const categories = ['All Products', 'Electronics & Gadgets', 'Fashion & Lifestyle', 'Home & Kitchen', 'Classified Ads'];
 
-  const handleUpdateAdStatus = (adId: string, status: 'approved' | 'rejected') => {
-    setUserAds((prev) =>
-      prev.map((a) => (a.id === adId ? { ...a, status } : a))
-    );
-  };
-
-  const handleDeleteAd = (adId: string) => {
-    setUserAds((prev) => prev.filter((a) => a.id !== adId));
-    setProducts((prev) => prev.filter((p) => p.id !== adId));
-  };
-
-  const handleAddReview = (productId: string, review: ProductReview) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === productId) {
-          const updatedReviews = [review, ...(p.reviews || [])];
-          const newAvg =
-            updatedReviews.reduce((sum, r) => sum + r.rating, 0) / updatedReviews.length;
-          return {
-            ...p,
-            reviews: updatedReviews,
-            rating: parseFloat(newAvg.toFixed(1)),
-            ratingCount: updatedReviews.length,
-          };
-        }
-        return p;
-      })
-    );
-  };
-
-  // Filter products by category & search term (Safe guard against undefined/corrupted items)
-  const filteredProducts = (products || []).filter((item) => {
-    if (!item || typeof item !== 'object') return false;
-    const itemCat = String(item.category || '');
+  const filteredProducts = products.filter((prod) => {
     const matchesCategory =
-      selectedCategory === 'All Products' || itemCat === selectedCategory;
-
-    const q = (searchQuery || '').toLowerCase().trim();
-    if (!q) return matchesCategory;
-
-    const nameStr = String(item.name || '').toLowerCase();
-    const descStr = String(item.description || '').toLowerCase();
-    const catStr = itemCat.toLowerCase();
-
-    return matchesCategory && (nameStr.includes(q) || descStr.includes(q) || catStr.includes(q));
+      selectedCategory === 'All Products' || prod.category === selectedCategory;
+    const matchesSearch =
+      prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prod.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
   });
-
-  const categories = [
-    'All Products',
-    'Electronics & Gadgets',
-    'Automotive Tech',
-    'Fashion & Apparel',
-    'Home & Living',
-    'Beauty & Health',
-  ];
-
-  const unreadNotifsCount = notifications.filter(
-    (n) => !n.read && (n.forRole === 'all' || (isAdmin ? n.forRole === 'admin' : n.forRole === 'user'))
-  ).length;
 
   return (
     <div className="min-h-screen bg-[#0f1115] text-gray-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
-      {/* Top Bar Announcement */}
-      <div className="bg-gradient-to-r from-red-950 via-red-900 to-black text-red-200 text-xs py-2 px-4 text-center font-medium border-b border-red-900/40 flex items-center justify-center gap-2">
-        <Sparkles className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-        <span>১০০% আসল ও প্রিমিয়াম গ্যাজেট • সারাদেশে হোম ডেলিভারি • বিকাশ ও ক্যাশ অন ডেলিভারি</span>
+      {/* 1. TOP ANNOUNCEMENT / HERO SLIDER BAR */}
+      <div className="bg-gradient-to-r from-red-700 via-red-600 to-black text-white text-xs font-semibold py-2 px-4 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2 truncate">
+            <span className="bg-black/30 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-bold">
+              GEN-TOUCH Online Shopping BD
+            </span>
+            <span className="hidden sm:inline text-gray-200">
+              ⚡ Use secret coupon <strong className="text-yellow-300 font-mono">ilovegentouch</strong> for ৳10 OFF! | Play Turbo Race to win up to ৳30!
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-[11px] shrink-0">
+            <button
+              onClick={() => setIsGameOpen(true)}
+              className="hover:text-yellow-300 font-bold flex items-center gap-1 transition"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 text-yellow-300" /> Play Game
+            </button>
+            <button
+              onClick={() => setIsPostAdOpen(true)}
+              className="hover:text-yellow-300 font-bold flex items-center gap-1 transition bg-black/25 px-2 py-0.5 rounded"
+            >
+              <Plus className="w-3.5 h-3.5" /> Post Ad (৳10)
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Main Navigation Header */}
-      <header className="sticky top-0 z-30 bg-[#12141c]/90 backdrop-blur-md border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          
-          {/* Logo Brand */}
+      {/* 2. MAIN NAVBAR */}
+      <header className="sticky top-0 z-30 bg-[#12141a]/95 backdrop-blur-md border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <a href="#" className="flex items-center gap-3 group">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-red-600 to-red-500 p-0.5 shadow-lg shadow-red-600/30 group-hover:scale-105 transition-transform duration-300">
-                <div className="w-full h-full bg-[#12141c] rounded-[14px] flex items-center justify-center">
-                  <span className="text-xl font-black text-white italic tracking-tighter">GT</span>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl font-black tracking-tight text-white group-hover:text-red-500 transition-colors">
-                    GEN<span className="text-red-600">-TOUCH</span>
-                  </span>
-                  {isAdmin && (
-                    <span className="text-[10px] font-bold uppercase bg-red-600/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded">
-                      Admin
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-gray-400">
-                  Online Shopping BD
-                </span>
+            <a href="#" className="flex items-center gap-3.5 group">
+              {/* Guaranteed Inline Chrome Car Logo */}
+              <div className="h-10 sm:h-12 w-32 sm:w-40 flex items-center justify-center transition duration-300 group-hover:scale-105">
+                <svg
+                  viewBox="0 0 900 620"
+                  className="w-full h-full drop-shadow-[0_2px_10px_rgba(239,68,68,0.35)]"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="silverChromeTop" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#94a3b8" />
+                      <stop offset="25%" stopColor="#f8fafc" />
+                      <stop offset="50%" stopColor="#cbd5e1" />
+                      <stop offset="75%" stopColor="#ffffff" />
+                      <stop offset="100%" stopColor="#64748b" />
+                    </linearGradient>
+                    <linearGradient id="silverChromeMid" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#64748b" />
+                      <stop offset="30%" stopColor="#e2e8f0" />
+                      <stop offset="50%" stopColor="#334155" />
+                      <stop offset="70%" stopColor="#f1f5f9" />
+                      <stop offset="100%" stopColor="#475569" />
+                    </linearGradient>
+                    <linearGradient id="silverChromeBot" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#475569" />
+                      <stop offset="40%" stopColor="#cbd5e1" />
+                      <stop offset="50%" stopColor="#1e293b" />
+                      <stop offset="70%" stopColor="#f8fafc" />
+                      <stop offset="100%" stopColor="#334155" />
+                    </linearGradient>
+                    <linearGradient id="redGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#ff1133" />
+                      <stop offset="100%" stopColor="#880000" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Red Sportscar Profile Silhouette */}
+                  <g transform="translate(180, 20) scale(0.6)">
+                    <path
+                      d="M80 180 C180 170, 260 120, 380 110 C500 100, 620 125, 750 175 C810 200, 840 230, 830 250 C790 255, 740 215, 680 215 C620 215, 590 260, 500 260 C420 260, 400 215, 330 215 C260 215, 230 255, 140 255 C90 255, 70 230, 80 180 Z"
+                      fill="url(#redGlow)"
+                      opacity="0.95"
+                    />
+                    <ellipse cx="235" cy="245" rx="42" ry="42" fill="#0b0d11" stroke="#ef4444" strokeWidth="6" />
+                    <ellipse cx="685" cy="245" rx="42" ry="42" fill="#0b0d11" stroke="#ef4444" strokeWidth="6" />
+                    <path d="M340 145 C440 135, 560 145, 640 180 L490 180 Z" fill="#00f2fe" opacity="0.45" />
+                  </g>
+
+                  {/* Chrome Typography GEN-TOUCH */}
+                  <text
+                    x="450"
+                    y="370"
+                    fontFamily="Arial Black, Impact, sans-serif"
+                    fontSize="115"
+                    fontWeight="900"
+                    textAnchor="middle"
+                    letterSpacing="8"
+                    fill="url(#silverChromeMid)"
+                    stroke="#0f172a"
+                    strokeWidth="7"
+                  >
+                    GEN-TOUCH
+                  </text>
+                  <text
+                    x="450"
+                    y="368"
+                    fontFamily="Arial Black, Impact, sans-serif"
+                    fontSize="115"
+                    fontWeight="900"
+                    textAnchor="middle"
+                    letterSpacing="8"
+                    fill="url(#silverChromeTop)"
+                    opacity="0.9"
+                  >
+                    GEN-TOUCH
+                  </text>
+
+                  {/* Red Accent Wing Lines */}
+                  <path d="M120 420 L780 420" stroke="url(#redGlow)" strokeWidth="6" strokeLinecap="round" />
+                  <path d="M220 435 L680 435" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+
+                  {/* Tagline */}
+                  <text
+                    x="450"
+                    y="500"
+                    fontFamily="Arial, sans-serif"
+                    fontSize="36"
+                    fontWeight="800"
+                    textAnchor="middle"
+                    letterSpacing="18"
+                    fill="#e2e8f0"
+                  >
+                    ONLINE SHOPPING BD
+                  </text>
+                </svg>
               </div>
             </a>
           </div>
 
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-md mx-6">
-            <div className="relative w-full">
+          {/* Search Bar */}
+          <div className="flex-1 max-w-xl mx-2 hidden md:block">
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Search acoustics, mechanical keyboards, smart watches, car tech..."
+                placeholder="Search premium gadgets, smartwatches, headsets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1a1d26] border border-gray-700 rounded-xl py-2 pl-10 pr-4 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
+                className="w-full bg-[#1b1f29] border border-gray-700/80 rounded-full py-2.5 pl-11 pr-4 text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition"
               />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
-                >
-                  ✕
-                </button>
-              )}
+              <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
-          {/* Navigation Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Post Ad / Sell Gear Button */}
+          {/* Action Icons */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <NotificationCenter notifications={notifications} />
+
             <button
-              onClick={() => setIsPostAdOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-red-600/20 transition-all hover:scale-105"
+              onClick={() => setIsGameOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white text-xs font-semibold transition"
             >
-              <Plus className="w-4 h-4" />
-              <span>{isAdmin ? 'Upload Official' : 'Post Ad'}</span>
+              <Gamepad2 className="w-4 h-4" />
+              <span>Turbo Game</span>
             </button>
 
-            {/* Notifications Button */}
+            {/* Post Ad Button */}
             <button
-              onClick={() => setIsNotifOpen(true)}
-              className="relative p-2.5 rounded-xl bg-[#1a1d26] hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-800 transition-colors"
-              title="Notifications"
+              onClick={() => setIsPostAdOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#202533] border border-gray-700 hover:border-red-500 text-gray-200 text-xs font-semibold transition"
             >
-              <Bell className="w-4 h-4" />
-              {unreadNotifsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                  {unreadNotifsCount}
+              <Plus className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden sm:inline">Sell Your Gear</span>
+              <span className="sm:hidden">Sell</span>
+            </button>
+
+            {/* Cart Button */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative p-2.5 rounded-full bg-[#1b1f29] border border-gray-700 hover:border-red-500 transition group"
+            >
+              <ShoppingBag className="w-5 h-5 text-gray-200 group-hover:text-red-400 transition" />
+              {cartItems.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
+                  {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
                 </span>
               )}
             </button>
 
-            {/* Admin / Portal Trigger */}
+            {/* Admin Lock Button */}
             <button
               onClick={() => setIsAdminOpen(true)}
-              className={`p-2.5 rounded-xl border transition-colors ${
-                isAdmin
-                  ? 'bg-red-600/20 text-red-400 border-red-500/40 hover:bg-red-600/30'
-                  : 'bg-[#1a1d26] hover:bg-gray-800 text-gray-300 hover:text-white border-gray-800'
-              }`}
-              title={isAdmin ? 'Admin Dashboard' : 'Admin Login'}
+              title="Admin Portal"
+              className="p-2.5 rounded-full bg-[#1b1f29] border border-gray-700 hover:border-yellow-500 hover:text-yellow-400 text-gray-400 transition"
             >
-              <User className="w-4 h-4" />
-            </button>
-
-            {/* Shopping Cart Drawer Trigger */}
-            <button
-              onClick={() => setIsCartOpen(true)}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-red-600/25 transition-all hover:scale-105"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span className="hidden sm:inline">Cart</span>
-              <span className="bg-black/30 px-1.5 py-0.5 rounded text-[11px] font-mono">
-                {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
-              </span>
+              <Lock className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Mobile Search Bar */}
         <div className="md:hidden px-4 pb-3">
-          <div className="relative w-full">
+          <div className="relative">
             <input
               type="text"
-              placeholder="Search gadgets, car tech, gears..."
+              placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1a1d26] border border-gray-700 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+              className="w-full bg-[#1b1f29] border border-gray-700 rounded-full py-2 pl-10 pr-4 text-xs text-gray-100 placeholder-gray-400 focus:outline-none focus:border-red-500"
             />
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
         </div>
       </header>
 
-      {/* Hero Section with Interactive Sports Car Game Trigger */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#12141c] via-[#0d0e14] to-[#0f1115] border-b border-gray-800/80">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-red-600/10 via-transparent to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            {/* Left Hero Content */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>অরিজিনাল ব্র্যান্ডের ইলেকট্রনিক্স ও অটোমোবাইল গ্যাজেট</span>
+      {/* 3. HERO BANNER */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#141720] to-[#0f1115] border-b border-gray-800/80">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.15),transparent_50%)] pointer-events-none" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="max-w-xl space-y-4 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-500/20 text-red-400 text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Engineered for Perfection & Pure Performance</span>
+            </div>
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+              Next-Gen Gear. <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-rose-400 to-yellow-400">
+                Premium Performance.
+              </span>
+            </h1>
+            <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
+              Genuine gadgets, authentic classified ads, fast nationwide delivery across Bangladesh, and cash on delivery or secure bKash checkout.
+            </p>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
+              <button
+                onClick={() => {
+                  const el = document.getElementById('catalog');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 font-bold text-sm text-white shadow-lg shadow-red-600/30 transition transform hover:-translate-y-0.5"
+              >
+                Explore Collection
+              </button>
+              <button
+                onClick={() => setIsGameOpen(true)}
+                className="px-5 py-3 rounded-xl bg-[#1d222e] hover:bg-[#262c3c] border border-gray-700 font-bold text-sm text-yellow-300 flex items-center gap-2 transition"
+              >
+                <Gamepad2 className="w-4 h-4" />
+                Play Turbo Race (৳30 Win)
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Perks Badge Cards */}
+          <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
+            <div className="bg-[#171b24] border border-gray-800 p-4 rounded-2xl flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-red-500/10 text-red-400">
+                <Truck className="w-5 h-5" />
               </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
-                GENUINE TECH. <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-600 to-amber-500">
-                  UNMATCHED SPEED.
-                </span>
-              </h1>
-              <p className="text-sm md:text-base text-gray-400 max-w-xl leading-relaxed">
-                জেন-টাচ অনলাইন শপ বিডি নিয়ে এসেছে আসল অরিজিনাল অডিও, হাই-স্পিড গেমিং অ্যাক্সেসরিজ, ড্যাশক্যাম এবং অটোমোবাইল গ্যাজেট। ঢাকা সিটিতে ২৪ ঘণ্টায় দ্রুত ডেলিভারি!
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <a
-                  href="#products-section"
-                  className="bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-xl shadow-red-600/25 flex items-center gap-2 transition-all hover:scale-105"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>এখনই কেনাকাটা করুন</span>
-                </a>
-
-                {/* Turbo Racer Game Challenge Button */}
-                <button
-                  onClick={() => setIsGameOpen(true)}
-                  className="bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold px-5 py-3 rounded-xl text-sm shadow-xl shadow-amber-600/20 flex items-center gap-2 transition-all hover:scale-105 group border border-amber-500/30"
-                >
-                  <Gamepad2 className="w-4.5 h-4.5 group-hover:rotate-12 transition-transform" />
-                  <span>কার গেম খেলুন (৳৩০ কুপন জিতুন)</span>
-                </button>
-              </div>
-
-              {/* Trust Badges */}
-              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-800/80 max-w-lg">
-                <div>
-                  <div className="text-lg font-black text-white">১০০%</div>
-                  <div className="text-xs text-gray-400">অথেনটিক গ্যাজেট</div>
-                </div>
-                <div>
-                  <div className="text-lg font-black text-white">২৪-৪৮ ঘণ্টা</div>
-                  <div className="text-xs text-gray-400">এক্সপ্রেস ডেলিভারি</div>
-                </div>
-                <div>
-                  <div className="text-lg font-black text-white">৭ দিন</div>
-                  <div className="text-xs text-gray-400">রিপ্লেসমেন্ট গ্যারান্টি</div>
-                </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">Fast BD Delivery</h4>
+                <p className="text-[11px] text-gray-400">Dhaka & Nationwide</p>
               </div>
             </div>
-
-            {/* Right Hero Interactive Card / Game Showcase */}
-            <div className="lg:col-span-5">
-              <div className="relative rounded-3xl bg-gradient-to-br from-[#161922] to-[#12141a] border border-gray-800 p-6 shadow-2xl overflow-hidden group">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-red-400">
-                      Mini Sports Car Challenge
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-mono bg-red-600/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
-                    Play & Win
-                  </span>
-                </div>
-
-                <div 
-                  onClick={() => setIsGameOpen(true)}
-                  className="cursor-pointer relative rounded-2xl overflow-hidden aspect-video bg-[#0a0b0e] border border-gray-800/80 group-hover:border-red-600/50 transition-all flex flex-col items-center justify-center p-4 text-center"
-                >
-                  <div className="w-16 h-16 rounded-full bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white transition-all shadow-lg shadow-red-600/20 mb-3">
-                    <Gamepad2 className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-base font-bold text-white group-hover:text-red-400 transition-colors">
-                    GEN-TOUCH Turbo Racer
-                  </h3>
-                  <p className="text-xs text-gray-400 mt-1 max-w-xs">
-                    স্পোর্টস কার ড্রাইভ করে স্কোর ৩০০+ তুললেই পাবেন নিশ্চিত ৳৩০ স্পেশাল ক্যাশ ভাউচার!
-                  </p>
-                  <span className="mt-3 text-xs font-bold text-red-500 inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                    গেম শুরু করুন <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-
-                {activeCoupon && (
-                  <div className="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-600/40 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-bold text-emerald-400">🎉 অ্যাক্টিভ কুপন ডিসকাউন্ট!</div>
-                      <div className="text-[11px] text-gray-300">কুপন কোড: <span className="font-mono font-bold text-white">{activeCoupon.code}</span> (৳{activeCoupon.discountAmount} ছাড়)</div>
-                    </div>
-                    <button
-                      onClick={() => setIsCartOpen(true)}
-                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition"
-                    >
-                      ব্যবহার করুন
-                    </button>
-                  </div>
-                )}
+            <div className="bg-[#171b24] border border-gray-800 p-4 rounded-2xl flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">100% Authentic</h4>
+                <p className="text-[11px] text-gray-400">Guaranteed Brand QC</p>
               </div>
             </div>
-
+            <div className="bg-[#171b24] border border-gray-800 p-4 rounded-2xl flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400">
+                <Headphones className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">Direct Support</h4>
+                <p className="text-[11px] text-gray-400">01310588979 (bKash/Call)</p>
+              </div>
+            </div>
+            <div className="bg-[#171b24] border border-gray-800 p-4 rounded-2xl flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400">
+                <Tag className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">Promo Discounts</h4>
+                <p className="text-[11px] text-gray-400">Use: ilovegentouch</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Main Catalog Section */}
-      <section id="products-section" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
-        
-        {/* Category Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 ${
-                selectedCategory === cat
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                  : 'bg-[#161920] text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Section Title */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
-              {selectedCategory}
-              <span className="text-xs font-normal text-gray-400">
-                ({filteredProducts.length} items available)
-              </span>
-            </h2>
-            <p className="text-xs text-gray-400">Hover over any item for smooth zoom & quick view</p>
-          </div>
-        </div>
-
-        {/* Product Grid */}
-        {filteredProducts.length === 0 ? (
-          <div className="py-16 text-center text-gray-500 bg-[#161920] rounded-3xl border border-gray-800">
-            <Search className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-            <p className="text-base font-bold text-gray-300">No products found</p>
-            <p className="text-xs text-gray-500 mt-1">Try clearing your search query or switching categories.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onSelect={(prod) => {
-                  setSelectedProduct(prod);
-                  setIsDetailsOpen(true);
-                }}
-                onAddToCart={(prod) => handleAddToCart(prod, 1)}
-                onToggleWishlist={handleToggleWishlist}
-                isWishlisted={wishlist.includes(product.id)}
-              />
+      {/* 4. MAIN PRODUCT CATALOG & FILTER BAR */}
+      <main id="catalog" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+        {/* Category Navigation Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-800 pb-4">
+          <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
+                  selectedCategory === cat
+                    ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                    : 'bg-[#181c26] text-gray-300 hover:bg-[#202533] border border-gray-800'
+                }`}
+              >
+                {cat}
+              </button>
             ))}
           </div>
+
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>
+              Showing {selectedCategory === 'Classified Ads' ? userAds.length : filteredProducts.length} items
+            </span>
+          </div>
+        </div>
+
+        {/* Content Section: Classified Ads OR Store Products */}
+        {selectedCategory === 'Classified Ads' ? (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-white">Verified Classified Ads</h2>
+                <p className="text-xs text-gray-400">Community posted tech & gear across Bangladesh.</p>
+              </div>
+              <button
+                onClick={() => setIsPostAdOpen(true)}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 transition"
+              >
+                <Plus className="w-3.5 h-3.5" /> Post Your Ad (৳10)
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {userAds.map((ad) => (
+                <div
+                  key={ad.id}
+                  className="bg-[#151922] border border-gray-800 rounded-2xl overflow-hidden hover:border-red-500/50 transition flex flex-col justify-between p-4 space-y-4"
+                >
+                  <div className="space-y-3">
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40">
+                      <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+                      <span className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-yellow-300 text-[10px] font-bold px-2 py-0.5 rounded">
+                        {ad.condition}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-red-400 uppercase font-mono tracking-wider font-bold">
+                        {ad.category}
+                      </span>
+                      <h3 className="text-sm font-bold text-white line-clamp-2 mt-1">{ad.title}</h3>
+                    </div>
+                    <p className="text-xs text-gray-400 line-clamp-2">{ad.description}</p>
+                  </div>
+
+                  <div className="border-t border-gray-800 pt-3 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-gray-400">Asking Price</span>
+                      <p className="text-base font-black text-red-400">৳{ad.price.toLocaleString()}</p>
+                    </div>
+                    <a
+                      href={`tel:${ad.sellerPhone}`}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 transition"
+                    >
+                      Call: {ad.sellerPhone}
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Store Products Grid */
+          <div>
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-16 bg-[#141720] rounded-2xl border border-gray-800/80 space-y-3">
+                <Search className="w-10 h-10 text-gray-500 mx-auto" />
+                <h3 className="text-base font-bold text-white">No products found</h3>
+                <p className="text-xs text-gray-400">Try changing your search terms or category filter.</p>
+                <button
+                  onClick={() => {
+                    setSelectedCategory('All Products');
+                    setSearchQuery('');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    onQuickView={handleQuickView}
+                    isWishlisted={wishlist.includes(product.id)}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
-      </section>
+      </main>
 
-      {/* Community Classifieds & User Ads Section */}
-      <UserAdSection
-        ads={userAds}
-        onOpenPostModal={() => setIsPostAdOpen(true)}
-      />
+      {/* 5. FOOTER */}
+      <footer className="bg-[#11131a] border-t border-gray-800/80 text-gray-400 text-xs mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <span className="text-white font-black text-base tracking-wider">GEN-TOUCH</span>
+            <p className="text-gray-400 leading-relaxed">
+              Bangladesh’s premier destination for high-performance gadgets, luxury tech accessories, and verified classified gear.
+            </p>
+            <p className="text-[11px] text-gray-500">
+              Admin & bKash Merchant: <strong className="text-gray-300">01310588979</strong>
+            </p>
+          </div>
 
-      {/* Global Footer */}
-      <Footer onOpenAdmin={() => setIsAdminOpen(true)} />
+          <div>
+            <h4 className="text-white font-bold mb-3 text-sm">Product Categories</h4>
+            <ul className="space-y-2">
+              <li><a href="#catalog" onClick={() => setSelectedCategory('Electronics & Gadgets')} className="hover:text-red-400 transition">Electronics & Gadgets</a></li>
+              <li><a href="#catalog" onClick={() => setSelectedCategory('Fashion & Lifestyle')} className="hover:text-red-400 transition">Fashion & Lifestyle</a></li>
+              <li><a href="#catalog" onClick={() => setSelectedCategory('Home & Kitchen')} className="hover:text-red-400 transition">Home & Kitchen</a></li>
+              <li><a href="#catalog" onClick={() => setSelectedCategory('Classified Ads')} className="hover:text-red-400 transition">Classified Ads Portal</a></li>
+            </ul>
+          </div>
 
-      {/* WhatsApp Floating Chat Widget */}
-      <WhatsAppButton />
+          <div>
+            <h4 className="text-white font-bold mb-3 text-sm">Customer Care</h4>
+            <ul className="space-y-2">
+              <li>Cash on Delivery (All 64 Districts)</li>
+              <li>7-Day Replacement Guarantee</li>
+              <li>bKash & Nagad Payment Verification</li>
+              <li>Track Active Order Status</li>
+            </ul>
+          </div>
 
-      {/* Modals & Overlays */}
-      <ProductDetailsModal
-        product={selectedProduct}
-        isOpen={isDetailsOpen}
-        onClose={() => {
-          setIsDetailsOpen(false);
-          setSelectedProduct(null);
-        }}
-        onAddToCart={handleAddToCart}
-        onAddReview={handleAddReview}
-        isWishlisted={selectedProduct ? wishlist.includes(selectedProduct.id) : false}
-        onToggleWishlist={handleToggleWishlist}
-      />
+          <div>
+            <h4 className="text-white font-bold mb-3 text-sm">Secret Coupons & Rewards</h4>
+            <p className="text-gray-400 mb-2">
+              Apply promo code <span className="text-red-400 font-mono font-bold">ilovegentouch</span> in the cart for instant ৳10 discount!
+            </p>
+            <button
+              onClick={() => setIsGameOpen(true)}
+              className="mt-2 w-full py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white font-bold transition flex items-center justify-center gap-2"
+            >
+              <Gamepad2 className="w-4 h-4" /> Play Game For ৳30 Off
+            </button>
+          </div>
+        </div>
 
+        <div className="border-t border-gray-800/80 py-4 text-center text-gray-500 text-[11px]">
+          © {new Date().getFullYear()} GEN-TOUCH Bangladesh. All rights reserved. Engineered for Performance.
+        </div>
+      </footer>
+
+      {/* 6. MODALS & DRAWERS */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cartItems={cartItems}
         onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        activeCoupon={activeCoupon}
-        onCheckoutSuccess={handleCheckoutSuccess}
+        onRemoveItem={handleRemoveFromCart}
+        appliedCoupon={appliedCoupon}
+        onApplyCoupon={handleApplyCoupon}
+        onRemoveCoupon={handleRemoveCoupon}
+        onCheckoutComplete={handleCheckoutComplete}
+        bkashNumber="01310588979"
       />
 
-      <CarGameModal
-        isOpen={isGameOpen}
-        onClose={() => setIsGameOpen(false)}
-        onClaimCoupon={(coupon) => {
-          setActiveCoupon(coupon);
-          setIsCartOpen(true);
-        }}
-      />
+      {selectedProduct && (
+        <ProductDetailsModal
+          isOpen={isDetailsOpen}
+          onClose={() => {
+            setIsDetailsOpen(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          onAddToCart={handleAddToCart}
+          isWishlisted={wishlist.includes(selectedProduct.id)}
+          onToggleWishlist={handleToggleWishlist}
+        />
+      )}
 
       <UserAdModal
         isOpen={isPostAdOpen}
         onClose={() => setIsPostAdOpen(false)}
         onSubmitAd={handleSubmitAd}
-        onAddProduct={handleAddProduct}
-        isAdmin={isAdmin}
+        bkashNumber="01310588979"
       />
 
-      <NotificationModal
-        isOpen={isNotifOpen}
-        onClose={() => setIsNotifOpen(false)}
-        notifications={notifications}
-        onMarkAllAsRead={() => {
-          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      <TurboRaceGame
+        isOpen={isGameOpen}
+        onClose={() => setIsGameOpen(false)}
+        onWinDiscount={(amount) => {
+          const promoCode = `turbowin-${amount}`;
+          setAppliedCoupon({
+            code: promoCode,
+            discountType: 'fixed',
+            discountAmount: amount,
+            description: `Turbo Champion ${amount}TK Off`,
+          });
+          setIsCartOpen(true);
         }}
-        onActionClick={(target) => {
-          if (target === 'game') setIsGameOpen(true);
-          if (target === 'ad_post') setIsPostAdOpen(true);
-          if (target === 'admin') setIsAdminOpen(true);
-        }}
-        isAdmin={isAdmin}
       />
 
       <AdminModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
-        orders={orders}
-        onUpdateOrderStatus={handleUpdateOrderStatus}
-        userAds={userAds}
-        onUpdateAdStatus={handleUpdateAdStatus}
-        onDeleteAd={handleDeleteAd}
         products={products}
+        userAds={userAds}
+        orders={orders}
         onAddProduct={handleAddProduct}
-        isAdmin={isAdmin}
-        setIsAdmin={setIsAdmin}
-      />
-
-      <CustomerAuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onDeleteProduct={(id) => setProducts((prev) => prev.filter((p) => p.id !== id))}
+        onUpdateOrderStatus={(id, status) =>
+          setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
+        }
+        onDeleteAd={(id) => setUserAds((prev) => prev.filter((a) => a.id !== id))}
       />
     </div>
   );
 }
-
-export default App;
