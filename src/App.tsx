@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, Bell, Search, User, Sparkles, 
-  Gamepad2, Plus, ArrowRight, X, Heart
+  Gamepad2, Plus, ArrowRight 
 } from 'lucide-react';
-import { 
-  Product, ProductCategory, CartItem, Order, UserAd, 
-  NotificationItem, GameCoupon, OrderStatus 
-} from './types';
-import { PRODUCTS as INITIAL_PRODUCTS } from './data/products';
-import { productService } from './services/productService';
+import type { Product, ProductCategory, CartItem, Order, UserAd, NotificationItem, GameCoupon, ProductReview, OrderStatus } from "./types";
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
@@ -20,25 +15,224 @@ import { AdminModal } from './components/AdminModal';
 import { UserAdSection } from './components/UserAdSection';
 import { Footer } from './components/Footer';
 import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { productService } from './services/productService';
+
+// Initial Curated Products for GEN-TOUCH
+const INITIAL_PRODUCTS: Product[] = [
+  {
+    id: 'gt-01',
+    name: 'AcousticPro ANC Active Noise Cancelling Headset',
+    category: 'Electronics & Gadgets',
+    price: 3499,
+    originalPrice: 4800,
+    rating: 4.9,
+    ratingCount: 28,
+    inStock: true,
+    stockCount: 15,
+    badge: 'Best Seller',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+      'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&q=80',
+    ],
+    description: 'High-fidelity audio drivers engineered with deep bass matrix, hybrid -35dB active noise cancellation, and 40 hours battery endurance.',
+    features: ['Hybrid Active Noise Cancelling', '40-Hour Battery Life', 'Bluetooth 5.3 Low Latency', 'Memory Foam Earcups'],
+    reviews: [
+      {
+        id: 'rev-1',
+        userName: 'Tanvir Hossain',
+        rating: 5,
+        comment: 'অসাধারণ সাউন্ড কোয়ালিটি এবং ব্যাস খুব ভালো। ডেলিভারি ২ দিনের মধ্যে পেয়েছি।',
+        date: '2 দিন আগে',
+        verifiedPurchase: true,
+      },
+      {
+        id: 'rev-2',
+        userName: 'Rahim Ahmed',
+        rating: 4.8,
+        comment: 'Great ANC performance in noisy road traffic.',
+        date: '৫ দিন আগে',
+        verifiedPurchase: true,
+      },
+    ],
+  },
+  {
+    id: 'gt-02',
+    name: 'ApexTactical Chrono Smartwatch with Amoled Screen',
+    category: 'Electronics & Gadgets',
+    price: 2850,
+    originalPrice: 3950,
+    rating: 4.8,
+    ratingCount: 19,
+    inStock: true,
+    stockCount: 8,
+    badge: 'Trending',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+      'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&q=80',
+    ],
+    description: 'Military grade zinc-alloy frame, 1.43 inch super vivid AMOLED retina display with 100+ health workout modes and IP68 water sealing.',
+    features: ['1.43" AMOLED Display', 'Bluetooth Calling', 'IP68 Waterproof', 'SpO2 & Heart Rate 24/7'],
+    reviews: [
+      {
+        id: 'rev-3',
+        userName: 'Sabbir Rahman',
+        rating: 5,
+        comment: 'ডিসপ্লেটা সত্যি অসাধারণ, রোদেও একদম ক্লিয়ার দেখা যায়।',
+        date: '১ সপ্তাহ আগে',
+        verifiedPurchase: true,
+      },
+    ],
+  },
+  {
+    id: 'gt-03',
+    name: 'Precision Barista Electric Coffee & Spice Grinder',
+    category: 'Home & Living',
+    price: 1950,
+    originalPrice: 2600,
+    rating: 4.7,
+    ratingCount: 12,
+    inStock: true,
+    stockCount: 20,
+    badge: 'Hot Deal',
+    image: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80',
+    ],
+    description: 'Heavy duty stainless steel 304 blades operating at 28000 RPM for instant consistent fine espresso grinding and dry masala processing.',
+    features: ['304 Stainless Steel Blades', '28,000 RPM Motor', 'One-Touch Pulse Operation', 'Overheat Safety Guard'],
+    reviews: [],
+  },
+  {
+    id: 'gt-04',
+    name: 'HydroPure Smart Ultrasonic Cool Mist Humidifier',
+    category: 'Home & Living',
+    price: 2200,
+    originalPrice: 3100,
+    rating: 4.9,
+    ratingCount: 34,
+    inStock: true,
+    stockCount: 12,
+    badge: 'Popular',
+    image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80',
+    ],
+    description: 'Aroma diffuser with 7-color gentle ambient night glowing LEDs, whisper silent 22dB sleep operation and anti-microbial tank.',
+    features: ['3.5L Tank Capacity', 'Essential Oil Diffuser Tray', 'Whisper Quiet 22dB', 'Auto Shut-Off Safety'],
+    reviews: [
+      {
+        id: 'rev-4',
+        userName: 'Nadia Islam',
+        rating: 5,
+        comment: 'বাচ্চার রুমে রেখেছি, খুব সুন্দর সুগন্ধ ছড়ায় এবং শান্ত ঘুম হয়।',
+        date: '৪ দিন আগে',
+        verifiedPurchase: true,
+      },
+    ],
+  },
+  {
+    id: 'gt-05',
+    name: 'CyberPunk Neon LED Edge Ergonomic Mousepad XXL',
+    category: 'Electronics & Gadgets',
+    price: 1150,
+    originalPrice: 1750,
+    rating: 4.6,
+    ratingCount: 15,
+    inStock: true,
+    stockCount: 25,
+    image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=800&q=80',
+    ],
+    description: '900x400mm micro-textured cloth weave surface with 14 chroma lighting modes and non-slip textured natural rubber base.',
+    features: ['900x400x4mm Huge Dimension', '14 RGB Lighting Effects', 'Water-Resistant Coating', 'Non-Slip Rubber Bottom'],
+    reviews: [],
+  },
+  {
+    id: 'gt-06',
+    name: 'Titanium Lumina EDC Rechargeable Tactical Flashlight',
+    category: 'Automotive Tech',
+    price: 1450,
+    originalPrice: 2200,
+    rating: 4.8,
+    ratingCount: 22,
+    inStock: true,
+    stockCount: 14,
+    badge: 'Must Have',
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80',
+    ],
+    description: 'Blinding 2000 Lumen output with 350-meter throw distance, Type-C quick charging, aircraft aluminium body with IPX7 rating.',
+    features: ['2000 Lumens Max Output', 'Type-C Fast Charging', 'Emergency SOS Strobe', 'Aircraft Grade Body'],
+    reviews: [],
+  },
+];
+
+// Initial Approved User Ads
+const INITIAL_USER_ADS: UserAd[] = [
+  {
+    id: 'ad-01',
+    title: 'Corsair K70 RGB MK.2 Rapidfire (Mint Condition)',
+    category: 'Electronics & Gadgets',
+    price: 5500,
+    sellerName: 'Shakil Ahmed',
+    sellerPhone: '01822334455',
+    sellerLocation: 'Uttara Sector 7, Dhaka',
+    description: 'Cherry MX Speed switches, brushed aluminium frame, dedicated volume roller. Used only 4 months with full box and all spare keycaps.',
+    imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
+    feeAmount: 20,
+    feeSenderNumber: '01822334455',
+    feeTrxId: 'BL889X09',
+    status: 'approved',
+    createdAt: '2025-05-10T10:30:00.000Z',
+  },
+  {
+    id: 'ad-02',
+    title: 'Keychron K2 V2 Wireless Bluetooth Mechanical Keyboard',
+    category: 'Electronics & Gadgets',
+    price: 6200,
+    sellerName: 'Farhan Kabir',
+    sellerPhone: '01711223344',
+    sellerLocation: 'Dhanmondi 27, Dhaka',
+    description: 'Gateron G Pro Brown switches, RGB backlight, Mac & Windows compatible. 4000mAh battery. Excellent condition, fresh box.',
+    imageUrl: 'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=800&q=80',
+    feeAmount: 10,
+    feeSenderNumber: '01711223344',
+    feeTrxId: 'BK991Z22',
+    status: 'approved',
+    createdAt: '2025-05-11T14:15:00.000Z',
+  },
+];
 
 export const App: React.FC = () => {
-  // PRODUCTS STATE (Synced with Firebase Cloud Firestore + LocalStorage fallback)
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Products');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  // Products & Categories
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('gentouch_products');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_PRODUCTS;
+  });
 
-  // CART & WISHLIST
+  const [selectedCategory, setSelectedCategory] = useState<string>('All Products');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Cart & Drawer
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('gentouch_cart');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) return JSON.parse(saved);
     } catch {
-      return [];
+      // ignore
     }
+    return [];
   });
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [wishlist, setWishlist] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('gentouch_wishlist');
@@ -48,44 +242,60 @@ export const App: React.FC = () => {
     }
   });
 
-  // USER ADS (Synced with Firebase Cloud Firestore)
+  // Modals
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
+  const [isGameOpen, setIsGameOpen] = useState<boolean>(false);
+  const [isPostAdOpen, setIsPostAdOpen] = useState<boolean>(false);
+  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  // User Ads
   const [userAds, setUserAds] = useState<UserAd[]>(() => {
     try {
       const saved = localStorage.getItem('gentouch_user_ads');
-      return saved ? JSON.parse(saved) : [
-        {
-          id: 'ad-01',
-          title: 'Corsair K70 RGB MK.2 Rapidfire (Mint Condition)',
-          category: 'Electronics & Gadgets',
-          price: 5500,
-          sellerName: 'Shakil Ahmed',
-          sellerPhone: '01822334455',
-          sellerLocation: 'Uttara Sector 7, Dhaka',
-          description: 'Cherry MX Speed switches, brushed aluminium frame, dedicated volume roller. Used only 4 months with full box and all spare keycaps.',
-          imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
-          feeAmount: 20,
-          feeSenderNumber: '01822334455',
-          feeTrxId: 'BL889X09',
-          status: 'approved',
-          createdAt: '2025-05-10T10:30:00.000Z',
-        }
-      ];
+      if (saved) return JSON.parse(saved);
     } catch {
-      return [];
+      // ignore
     }
+    return INITIAL_USER_ADS;
   });
 
-  // ORDERS
+  // Orders
   const [orders, setOrders] = useState<Order[]>(() => {
     try {
       const saved = localStorage.getItem('gentouch_orders');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) return JSON.parse(saved);
     } catch {
-      return [];
+      // ignore
     }
+    return [
+      {
+        id: 'GT-ORD-7721',
+        customer: {
+          name: 'Tanzim Taj',
+          phone: '01310588979',
+          address: 'Mirpur DOHS, Road 4',
+          district: 'Dhaka',
+        },
+        items: [
+          {
+            product: INITIAL_PRODUCTS[0],
+            quantity: 1,
+          },
+        ],
+        total: 3559,
+        paymentMethod: 'bKash',
+        paymentTrxId: 'BK79182390',
+        paymentNumber: '01310588979',
+        status: 'Confirmed',
+        createdAt: '2025-05-12 12:40 PM',
+      },
+    ];
   });
 
-  // NOTIFICATIONS
+  // Notifications
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
       id: 'notif-1',
@@ -104,25 +314,26 @@ export const App: React.FC = () => {
       timestamp: '1 hour ago',
       read: false,
       forRole: 'user',
-    }
+    },
   ]);
 
-  // MODALS
-  const [isGameOpen, setIsGameOpen] = useState(false);
-  const [isPostAdOpen, setIsPostAdOpen] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  // ADMIN AUTH
+  // Admin state
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return sessionStorage.getItem('gentouch_is_admin') === 'true';
   });
 
-  // GAME COUPON
-  const [activeCoupon, setActiveCoupon] = useState<GameCoupon | null>(null);
+  // Active coupon from Game or promos
+  const [activeCoupon, setActiveCoupon] = useState<GameCoupon | null>(() => {
+    try {
+      const saved = localStorage.getItem('gentouch_active_coupon');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
 
-  // REALTIME FIRESTORE LISTENER (Cloud Database Auto-Sync)
+  // Realtime Cloud listener
   useEffect(() => {
     const unsubscribe = productService.subscribeToProducts((liveItems) => {
       if (liveItems && liveItems.length > 0) {
@@ -140,27 +351,34 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Save Cart to LocalStorage
+  // Persistent storage updates
+  useEffect(() => {
+    localStorage.setItem('gentouch_products', JSON.stringify(products));
+  }, [products]);
+
   useEffect(() => {
     localStorage.setItem('gentouch_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // Save Wishlist to LocalStorage
   useEffect(() => {
     localStorage.setItem('gentouch_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
-  // Save User Ads to LocalStorage
   useEffect(() => {
     localStorage.setItem('gentouch_user_ads', JSON.stringify(userAds));
   }, [userAds]);
 
-  // Save Orders to LocalStorage
   useEffect(() => {
     localStorage.setItem('gentouch_orders', JSON.stringify(orders));
   }, [orders]);
 
-  // CART HANDLERS
+  useEffect(() => {
+    if (activeCoupon) {
+      localStorage.setItem('gentouch_active_coupon', JSON.stringify(activeCoupon));
+    }
+  }, [activeCoupon]);
+
+  // Cart handlers
   const handleAddToCart = (product: Product, quantity = 1) => {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
@@ -200,26 +418,34 @@ export const App: React.FC = () => {
     );
   };
 
-  // CHECKOUT & ORDERS
   const handleCheckoutSuccess = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
     setCartItems([]);
     setIsCartOpen(false);
 
-    // Notify user & admin
-    const newNotif: NotificationItem = {
-      id: `ord-${Date.now()}`,
-      title: '📦 Order Received!',
-      message: `Your order #${order.id} for ৳${order.total} has been placed. We are verifying it.`,
+    const adminAlert: NotificationItem = {
+      id: `notif-ord-adm-${Date.now()}`,
+      title: `🛍️ New Order Received (${order.id})`,
+      message: `${order.customer.name} placed order for ৳${order.total} via ${order.paymentMethod}. Phone: ${order.customer.phone}`,
+      type: 'order',
+      timestamp: 'Just now',
+      read: false,
+      forRole: 'admin',
+    };
+
+    const userNotif: NotificationItem = {
+      id: `notif-ord-usr-${Date.now()}`,
+      title: `✅ Order Placed: ${order.id}`,
+      message: `Your order for ৳${order.total} has been placed. We are verifying it.`,
       type: 'order',
       timestamp: 'Just now',
       read: false,
       forRole: 'user',
     };
-    setNotifications((prev) => [newNotif, ...prev]);
+
+    setNotifications((prev) => [adminAlert, userNotif, ...prev]);
   };
 
-  // ADMIN SUBMIT PRODUCT (Saves directly to Firebase + Local)
   const handleAddProduct = async (newProduct: Product) => {
     try {
       await productService.saveProduct(newProduct);
@@ -229,7 +455,6 @@ export const App: React.FC = () => {
     setProducts((prev) => [newProduct, ...prev]);
   };
 
-  // USER SUBMIT AD (Saves directly to Firebase + Local)
   const handleSubmitAd = async (newAd: UserAd) => {
     try {
       await productService.saveUserAd(newAd);
@@ -238,19 +463,19 @@ export const App: React.FC = () => {
     }
     setUserAds((prev) => [newAd, ...prev]);
 
-    const adminNotif: NotificationItem = {
-      id: `ad-notif-${Date.now()}`,
-      title: '📢 New Member Ad Submitted!',
-      message: `${newAd.sellerName} submitted "${newAd.title}" (Fee: ৳${newAd.feeAmount}, TrxID: ${newAd.feeTrxId}).`,
-      type: 'ad',
+    const adminAlert: NotificationItem = {
+      id: `notif-ad-${Date.now()}`,
+      title: `📢 New User Ad Pending Approval (${newAd.title})`,
+      message: `${newAd.sellerName} submitted an ad with TrxID: ${newAd.feeTrxId} (৳${newAd.feeAmount}). Please verify and approve.`,
+      type: 'admin',
       timestamp: 'Just now',
       read: false,
       forRole: 'admin',
     };
-    setNotifications((prev) => [adminNotif, ...prev]);
+
+    setNotifications((prev) => [adminAlert, ...prev]);
   };
 
-  // ADMIN AUTHENTICATION
   const handleAuthenticateAdmin = (code: string) => {
     const trimmed = code.trim();
     if (trimmed === 'Hunter#11220' || trimmed === 'Hunter#1122' || trimmed === 'Hunter#1212') {
@@ -278,20 +503,37 @@ export const App: React.FC = () => {
     );
   };
 
-  // মেম্বার এডস ও প্রোডাক্ট ডিলিট হ্যান্ডলার
   const handleDeleteAd = (adId: string) => {
     setUserAds((prev) => prev.filter((a) => a.id !== adId));
     setProducts((prev) => prev.filter((p) => p.id !== adId));
   };
 
-  // FILTERED PRODUCTS
-  const filteredProducts = products.filter((prod) => {
+  const handleAddReview = (productId: string, review: ProductReview) => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          const updatedReviews = [review, ...(p.reviews || [])];
+          const newAvg =
+            updatedReviews.reduce((sum, r) => sum + r.rating, 0) / updatedReviews.length;
+          return {
+            ...p,
+            reviews: updatedReviews,
+            rating: parseFloat(newAvg.toFixed(1)),
+            ratingCount: updatedReviews.length,
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Filter products
+  const filteredProducts = products.filter((item) => {
     const matchesCategory =
-      selectedCategory === 'All Products' || prod.category === selectedCategory;
+      selectedCategory === 'All Products' || item.category === selectedCategory;
     const matchesSearch =
-      prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.category.toLowerCase().includes(searchQuery.toLowerCase());
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -465,51 +707,44 @@ export const App: React.FC = () => {
                     </text>
                     <line x1="690" y1="416" x2="760" y2="416" stroke="url(#laserRed)" strokeWidth="2.5" strokeLinecap="round" />
                   </g>
+                  <path
+                    d="M 260,432 C 370,490 530,490 640,432 C 550,476 350,476 260,432 Z"
+                    fill="url(#silverChromeTop)"
+                    stroke="#ffffff"
+                    strokeWidth="0.8"
+                    opacity="0.85"
+                  />
                 </svg>
               </div>
 
-              {/* Text fallback logo */}
-              <div className="flex flex-col">
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center">
-                  GEN<span className="text-red-600">-</span>TOUCH
+              <div className="hidden sm:block">
+                <span className="text-xl font-black tracking-tight text-white">
+                  GEN-<span className="text-red-500">TOUCH</span>
                 </span>
-                <span className="text-[10px] tracking-widest text-gray-400 font-bold uppercase -mt-1">
-                  ONLINE SHOPPING BD
+                <span className="block text-[9px] tracking-widest text-gray-400 uppercase font-semibold">
+                  Online Shopping BD
                 </span>
               </div>
             </a>
           </div>
 
-          {/* Search bar */}
-          <div className="flex-1 max-w-xl hidden md:block mx-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search acoustics, mechanical keyboards, smart watches, car tech..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full py-2.5 pl-10 pr-10 bg-[#161920] border border-gray-800 rounded-full text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
-              />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3.5 top-2.5 text-gray-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+          <div className="hidden md:flex flex-1 max-w-lg relative">
+            <input
+              type="text"
+              placeholder="Search acoustics, mechanical keyboards, smart watches, car tech..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-[#161920] border border-gray-800 focus:border-red-600 rounded-2xl text-xs text-white placeholder-gray-500 outline-none transition"
+            />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
           </div>
 
-          {/* Action icons */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => setIsPostAdOpen(true)}
-              className="flex items-center gap-1 py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/30 transition active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-xs font-bold rounded-xl shadow transition active:scale-95"
             >
-              <Plus className="w-4 h-4" />
-              <span>Post Ad</span>
+              <Plus className="w-4 h-4" /> Post Ad
             </button>
 
             <button
