@@ -817,10 +817,12 @@ export function App() {
         onClaimCoupon={handleClaimCoupon}
       />
 
-      <UserAdModal
+    <UserAdModal
         isOpen={isPostAdOpen}
         onClose={() => setIsPostAdOpen(false)}
         onSubmitAd={handleSubmitAd}
+        onAddProduct={handleAddProduct}
+        isAdmin={isAdmin}
       />
 
       <NotificationModal
