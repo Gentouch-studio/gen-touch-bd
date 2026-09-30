@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Video, Image as ImageIcon, CheckCircle, AlertCircle, Copy, Check, ShieldCheck, Sparkles } from 'lucide-react';
+import { X, Upload, Video, Image as ImageIcon, CheckCircle, AlertCircle, Copy, Check, ShieldCheck, Sparkles, Plus } from 'lucide-react';
 import { UserAd, Product, ProductCategory } from '../types';
 
 interface UserAdModalProps {
@@ -27,7 +27,10 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
   const [sellerPhone, setSellerPhone] = useState(isAdmin ? '01310588979' : '');
   const [sellerLocation, setSellerLocation] = useState(isAdmin ? 'Dhaka, Bangladesh' : '');
   const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  
+  // একাধিক ছবি হ্যান্ডলিং (৩-৪টি ছবি আপলোড সুবিধা)
+  const [images, setImages] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [features, setFeatures] = useState('');
   const [badge, setBadge] = useState('Hot');
@@ -40,26 +43,51 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  // ৩-৪টি ছবি আপলোড করার হ্যান্ডলার
+  const handleImageFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (images.length + files.length > 5) {
+      setErrorMsg('সর্বোচ্চ ৪-৫টি ছবি আপলোড করা যাবে।');
+      return;
+    }
+
+    Array.from(files).forEach((file) => {
       if (file.size > 5 * 1024 * 1024) {
-        setErrorMsg('ছবির সাইজ ৫ মেগাবাইটের (5MB) কম হতে হবে');
+        setErrorMsg('প্রতিটি ছবির সাইজ ৫ মেগাবাইটের (5MB) কম হতে হবে');
         return;
       }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageUrl(reader.result as string);
+        if (reader.result) {
+          setImages((prev) => [...prev, reader.result as string]);
+        }
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddUrlImage = () => {
+    if (!imageUrlInput.trim()) return;
+    if (images.length >= 5) {
+      setErrorMsg('সর্বোচ্চ ৪-৫টি ছবি যোগ করা যাবে।');
+      return;
     }
+    setImages((prev) => [...prev, imageUrlInput.trim()]);
+    setImageUrlInput('');
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const handleVideoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 20 * 1024 * 1024) {
-        setErrorMsg('ভিডিও সাইজ ২০ মেগাবাইটের কম (ছোট ক্লিপ) হতে হবে');
+        setErrorMsg('ভিডিও সাইজ ২০ মেগাবাইট (20MB) এর কম হতে হবে');
         return;
       }
       const reader = new FileReader();
@@ -80,75 +108,66 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
-    if (!title.trim() || !price) {
-      setErrorMsg('দয়া করে প্রোডাক্টের নাম ও দাম পূরণ করুন।');
+    if (!title.trim() || !price || (!isAdmin && !sellerName.trim()) || (!isAdmin && !sellerPhone.trim()) || !description.trim()) {
+      setErrorMsg('অনুগ্রহ করে তারকা (*) চিহ্নিত সকল প্রয়োজনীয় তথ্য পূরণ করুন');
       return;
     }
 
-    if (!imageUrl) {
-      setErrorMsg('দয়া করে প্রোডাক্টের একটি স্পষ্ট ছবি যুক্ত করুন।');
+    if (images.length === 0) {
+      setErrorMsg('কমপক্ষে একটি ছবি যোগ করুন');
       return;
     }
 
-    // ১. এডমিন / মডারেটর পোস্ট করছেন -> সরাসরি All Products এ যুক্ত হবে (টাকা লাগবে না)
-    if (isAdmin) {
+    if (!isAdmin && (!feeSenderNumber.trim() || !feeTrxId.trim())) {
+      setErrorMsg('বিকাশ সেন্ড মানি করে প্রেরক নম্বর ও TrxID প্রদান করুন');
+      return;
+    }
+
+    const primaryImage = images[0];
+
+    // IF ADMIN: Add directly to All Products catalog
+    if (isAdmin && onAddProduct) {
       const parsedPrice = parseFloat(price) || 0;
-      const parsedOriginal = parseFloat(originalPrice) || Math.round(parsedPrice * 1.25);
-      
-      const featureList = features
-        .split('\n')
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
+      const parsedOriginal = parseFloat(originalPrice) || parsedPrice;
+      const featureList = features.split('\n').map(f => f.trim()).filter(Boolean);
 
       const newProduct: Product = {
-        id: `gt-custom-${Date.now()}`,
+        id: `gt-prod-${Date.now()}`,
         name: title.trim(),
-        category,
         price: parsedPrice,
-        originalPrice: parsedOriginal,
-        rating: 5.0,
-        ratingCount: 1,
-        inStock: true,
-        stockCount: 25,
-        badge: badge || 'New Arrival',
-        image: imageUrl,
+        originalPrice: parsedOriginal > parsedPrice ? parsedOriginal : undefined,
+        category,
+        image: primaryImage,
+        images: images,
         videoUrl: videoUrl || undefined,
-        description: description.trim() || 'GEN-TOUCH Official authentic product.',
-        features: featureList.length > 0 ? featureList : ['100% Original Authentic Product', 'Official Warranty Support', 'Express Fast Delivery'],
-        reviews: [],
+        description: description.trim(),
+        features: featureList.length > 0 ? featureList : ['100% Original Brand New', 'Warranty Included', 'Fast Delivery'],
+        badge: badge || 'Hot',
+        stock: 50,
+        rating: 5.0,
+        reviewsCount: 1,
+        source: 'admin'
       };
 
-      if (onAddProduct) {
-        onAddProduct(newProduct);
-      }
+      onAddProduct(newProduct);
       setIsSubmitted(true);
       return;
     }
 
-    // ২. সাধারণ মেম্বার পোস্ট করছেন -> বিকাশ ফি ও ভেরিফিকেশন লাগবে
-    if (!sellerName.trim() || !sellerPhone.trim() || !sellerLocation.trim()) {
-      setErrorMsg('দয়া করে বিক্রেতার নাম, মোবাইল নম্বর এবং লোকেশন পূরণ করুন।');
-      return;
-    }
-
-    if (!feeSenderNumber.trim() || !feeTrxId.trim()) {
-      setErrorMsg(`লিস্টিং ফি হিসেবে ৳${feeAmount} বিকাশে সেন্ড মানি করে মোবাইল নম্বর ও TrxID প্রদান করুন।`);
-      return;
-    }
-
+    // IF USER: Create Classified Member Ad
     const newAd: UserAd = {
-      id: `AD-${Date.now()}`,
+      id: `ad-${Date.now()}`,
       title: title.trim(),
       category,
       price: parseFloat(price) || 0,
       sellerName: sellerName.trim(),
       sellerPhone: sellerPhone.trim(),
-      sellerLocation: sellerLocation.trim(),
+      sellerLocation: sellerLocation.trim() || 'Bangladesh',
       description: description.trim(),
-      imageUrl,
+      imageUrl: primaryImage,
+      images: images,
       videoUrl: videoUrl || undefined,
       feeAmount,
-      feePaymentMethod: 'bkash',
       feeSenderNumber: feeSenderNumber.trim(),
       feeTrxId: feeTrxId.trim().toUpperCase(),
       status: 'pending',
@@ -162,10 +181,15 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
   const handleResetAndClose = () => {
     setIsSubmitted(false);
     setTitle('');
+    setCategory('Electronics & Gadgets');
     setPrice('');
     setOriginalPrice('');
+    setSellerName(isAdmin ? 'GEN-TOUCH Official' : '');
+    setSellerPhone(isAdmin ? '01310588979' : '');
+    setSellerLocation(isAdmin ? 'Dhaka, Bangladesh' : '');
     setDescription('');
-    setImageUrl('');
+    setImages([]);
+    setImageUrlInput('');
     setVideoUrl('');
     setFeatures('');
     setFeeSenderNumber('');
@@ -175,125 +199,119 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-xl bg-[#161920] border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col text-white max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-[#0b0c10] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-[#12141a]">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-lg ${
-              isAdmin 
-                ? 'bg-emerald-600/20 border border-emerald-500/40 text-emerald-400' 
-                : 'bg-red-600/20 border border-red-600/40 text-red-500'
-            }`}>
-              {isAdmin ? <ShieldCheck className="w-5 h-5" /> : '+'}
+        <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${isAdmin ? 'border-emerald-900/40 bg-emerald-950/20' : 'border-gray-800 bg-[#0f1117]'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white shadow-lg ${isAdmin ? 'bg-emerald-600 shadow-emerald-600/30' : 'bg-red-600 shadow-red-600/30'}`}>
+              {isAdmin ? <ShieldCheck className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="font-bold text-base tracking-wide flex items-center gap-2">
-                {isAdmin ? 'অফিসিয়াল প্রোডাক্ট আপলোড (All Products)' : 'বিজ্ঞাপন পোস্ট করুন (Member Ads)'}
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-white text-base sm:text-lg">
+                  {isAdmin ? 'অফিসিয়াল প্রোডাক্ট আপলোড (All Products)' : 'বিজ্ঞাপন পোস্ট করুন (Member Ads)'}
+                </h3>
                 {isAdmin && (
-                  <span className="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-bold">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     Admin / Moderator (Free)
                   </span>
                 )}
-              </h3>
+              </div>
               <p className="text-xs text-gray-400">
                 {isAdmin 
-                  ? 'আপনার প্রোডাক্ট সরাসরি মূল ওয়েবসাইটে (All Products) সবার জন্য লাইভ হবে' 
+                  ? 'আপনার প্রোডাক্টটি সরাসরি মূল ওয়েবসাইটে (All Products) সবার জন্য লাইভ হবে' 
                   : 'কমিউনিটি মেম্বারদের জন্য বাই/সেল ক্লাসিফায়েড বিজ্ঞাপন'}
               </p>
             </div>
           </div>
           <button
             onClick={handleResetAndClose}
-            className="p-1.5 text-gray-400 hover:text-white rounded-lg transition-colors"
+            className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5 custom-scrollbar">
+        {/* Content Body */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {isSubmitted ? (
-            <div className="py-8 flex flex-col items-center text-center space-y-4 animate-in zoom-in-95">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400">
+            <div className="text-center py-8 space-y-4">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${isAdmin ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40' : 'bg-red-600/20 text-red-500 border border-red-500/40'}`}>
                 <CheckCircle className="w-10 h-10" />
               </div>
-              <div>
-                <h4 className="text-xl font-bold text-white mb-1">
-                  {isAdmin ? 'প্রোডাক্ট সফলভাবে যুক্ত হয়েছে!' : 'বিজ্ঞাপন জমা হয়েছে!'}
-                </h4>
-                <p className="text-sm text-gray-400 max-w-md">
-                  {isAdmin
-                    ? 'আপনার নতুন প্রোডাক্টটি সরাসরি GEN-TOUCH এর মূল শপে (All Products) লাইভ হয়ে গেছে এবং ডেটাবেসে সেভ হয়েছে।'
-                    : `ধন্যবাদ! আপনার বিজ্ঞাপন এবং ৳${feeAmount} বিকাশ ভেরিফিকেশন (TrxID: ${feeTrxId}) আমাদের কাছে পৌঁছেছে।`}
-                </p>
-              </div>
-
-              {!isAdmin && (
-                <div className="p-4 bg-[#101318] border border-gray-800 rounded-2xl text-xs text-gray-300 max-w-md leading-relaxed">
-                  📢 এডমিন ভেরিফাই করার পর আপনার বিজ্ঞাপনটি Community Classifieds সেকশনে লাইভ হবে।
-                </div>
-              )}
-
+              <h3 className="text-xl font-bold text-white">
+                {isAdmin ? 'প্রোডাক্টটি সফলভাবে মূল শপে যুক্ত হয়েছে!' : 'বিজ্ঞাপন সাবমিট সফল হয়েছে!'}
+              </h3>
+              <p className="text-xs text-gray-300 max-w-md mx-auto leading-relaxed">
+                {isAdmin ? (
+                  <>
+                    আপনার নতুন প্রোডাক্টটি সরাসরি <strong>All Products</strong> ও ক্যাটাগরি পেজে লাইভ যুক্ত হয়ে গেছে। গ্রাহকরা এখন এটি অর্ডার করতে পারবেন।
+                  </>
+                ) : (
+                  <>
+                    আপনার বিজ্ঞাপন এবং bKash পেমেন্ট TrxID (<strong>{feeTrxId}</strong>) অ্যাডমিন যাচাই করবেন। ভেরিফিকেশনের পর এটি দ্রুত লাইভ হবে।
+                  </>
+                )}
+              </p>
               <button
+                type="button"
                 onClick={handleResetAndClose}
-                className="w-full max-w-xs py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition"
+                className="mt-4 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-red-600/30"
               >
-                ঠিক আছে
+                ঠিক আছে, বন্ধ করুন
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {errorMsg && (
-                <div className="flex items-center gap-2 p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-300">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                  {errorMsg}
-                </div>
-              )}
-
-              {/* Admin Special Notification */}
               {isAdmin && (
-                <div className="p-3 bg-emerald-950/40 border border-emerald-700/50 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+                <div className="p-3 bg-emerald-950/30 border border-emerald-800/40 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
                   <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>আপনি এডমিন হিসেবে লগইন আছেন। কোনো ফি ছাড়াই এই প্রোডাক্টটি সরাসরি <strong>All Products</strong>-এ যাবে।</span>
                 </div>
               )}
 
-              {/* Product Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                    প্রোডাক্টের নাম *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="যেমন: Wireless RGB Mechanical Gaming Keyboard"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
-                  />
+              {errorMsg && (
+                <div className="p-3 bg-red-950/40 border border-red-800/50 rounded-xl flex items-center gap-2 text-xs text-red-300">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>{errorMsg}</span>
                 </div>
+              )}
 
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">
+                  প্রোডাক্টের নাম *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: Wireless RGB Mechanical Gaming Keyboard"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none"
+                />
+              </div>
+
+              {/* Category & Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
                     ক্যাটাগরি *
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                    className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white outline-none transition"
+                    className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white outline-none"
                   >
                     <option value="Electronics & Gadgets">Electronics & Gadgets</option>
-                    <option value="Automotive Tech">Automotive Tech</option>
-                    <option value="Fashion & Apparel">Fashion & Apparel</option>
-                    <option value="Home & Living">Home & Living</option>
-                    <option value="Beauty & Health">Beauty & Health</option>
+                    <option value="Home & Kitchen">Home & Kitchen</option>
+                    <option value="Smart Living">Smart Living</option>
+                    <option value="Premium Collectibles">Premium Collectibles</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
                     বিক্রয় মূল্য (৳) *
                   </label>
                   <input
@@ -302,86 +320,85 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
                     placeholder="যেমন: 3500"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
+                    className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none font-mono"
                   />
                 </div>
-
-                {isAdmin && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                        পূর্বের মূল্য / ডিসকাউন্ট মূল্য (৳)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="যেমন: 4200"
-                        value={originalPrice}
-                        onChange={(e) => setOriginalPrice(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                        ব্যাজ (Badge)
-                      </label>
-                      <select
-                        value={badge}
-                        onChange={(e) => setBadge(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white outline-none transition"
-                      >
-                        <option value="Hot">Hot</option>
-                        <option value="Top Rated">Top Rated</option>
-                        <option value="Official">Official</option>
-                        <option value="Best Seller">Best Seller</option>
-                        <option value="Limited Edition">Limited Edition</option>
-                      </select>
-                    </div>
-                  </>
-                )}
               </div>
 
-              {/* Contact Info (Only for Member Ads) */}
+              {/* Admin Extra Pricing Fields */}
+              {isAdmin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      পূর্বের মূল্য / ডিসকাউন্ট মূল্য (৳)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="যেমন: 4200"
+                      value={originalPrice}
+                      onChange={(e) => setOriginalPrice(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      ব্যাজ (Badge)
+                    </label>
+                    <select
+                      value={badge}
+                      onChange={(e) => setBadge(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white outline-none"
+                    >
+                      <option value="Hot">Hot</option>
+                      <option value="Sale">Sale</option>
+                      <option value="Trending">Trending</option>
+                      <option value="Official">Official</option>
+                      <option value="Exclusive">Exclusive</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Seller Information (For Members) */}
               {!isAdmin && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
                       আপনার নাম *
                     </label>
                     <input
                       type="text"
-                      required
+                      required={!isAdmin}
                       placeholder="পুরো নাম"
                       value={sellerName}
                       onChange={(e) => setSellerName(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
+                      className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
                       মোবাইল নম্বর *
                     </label>
                     <input
                       type="tel"
-                      required
+                      required={!isAdmin}
                       placeholder="01XXXXXXXXX"
                       value={sellerPhone}
                       onChange={(e) => setSellerPhone(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
+                      className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
                       লোকেশন / এলাকা *
                     </label>
                     <input
                       type="text"
-                      required
+                      required={!isAdmin}
                       placeholder="যেমন: মিরপুর, ঢাকা"
                       value={sellerLocation}
                       onChange={(e) => setSellerLocation(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
+                      className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none"
                     />
                   </div>
                 </div>
@@ -389,56 +406,76 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                  বিস্তারিত বিবরণ
+                <label className="block text-xs font-semibold text-gray-300 mb-1">
+                  বিস্তারিত বিবরণ *
                 </label>
                 <textarea
+                  required
                   rows={3}
                   placeholder="প্রোডাক্টের কন্ডিশন, স্পেসিফিকেশন ও বিস্তারিত বর্ণনা লিখুন..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition custom-scrollbar"
+                  className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none resize-none"
                 />
               </div>
 
-              {/* Features (Only for Admin) */}
+              {/* Admin Bullet Features */}
               {isAdmin && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
                     মূল বৈশিষ্ট্যসমূহ (প্রতি লাইনে একটি)
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     placeholder="100% Original Brand New&#10;1 Year Warranty&#10;Fast Home Delivery"
                     value={features}
                     onChange={(e) => setFeatures(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-sm text-white placeholder-gray-500 outline-none transition"
+                    className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none font-mono resize-none text-[11px]"
                   />
                 </div>
               )}
 
-              {/* Media Upload */}
-              <div className="space-y-3">
+              {/* Multiple Images and Media Upload */}
+              <div className="p-3 bg-[#12141a] border border-gray-800 rounded-xl space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1.5 flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-red-500" />
-                      ছবির লিংক বা ফাইল আপলোড *
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-red-400">
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        ছবির লিংক বা ফাইল আপলোড (৩-৪টি ছবি) *
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        {images.length}/5 টি ছবি
+                      </span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="ছবির সরাসরি লিংক (URL) পেস্ট করুন"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none mb-2"
-                    />
+
+                    {/* Image URL Input with Add Button */}
+                    <div className="flex gap-1.5 mb-2">
+                      <input
+                        type="text"
+                        placeholder="ছবির সরাসরি লিংক (URL) পেস্ট করুন"
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-[#101217] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddUrlImage}
+                        className="px-3 py-2 bg-red-600/30 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> যোগ
+                      </button>
+                    </div>
+
+                    {/* Multiple File Upload Button */}
                     <label className="flex items-center justify-center gap-2 px-3 py-2 bg-[#12141a] hover:bg-[#1a1e27] border border-dashed border-gray-700 hover:border-gray-500 rounded-xl cursor-pointer text-xs text-gray-300 transition">
                       <Upload className="w-3.5 h-3.5 text-gray-400" />
-                      <span>ডিভাইস থেকে ছবি আপলোড</span>
+                      <span>গ্যালারি থেকে ৩-৪টি ছবি বেছে নিন</span>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={handleImageFile}
+                        multiple
+                        onChange={handleImageFiles}
                         className="hidden"
                       />
                     </label>
@@ -469,16 +506,25 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
                   </div>
                 </div>
 
-                {imageUrl && (
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-800">
-                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setImageUrl('')}
-                      className="absolute top-1 right-1 p-1 bg-black/70 rounded-full text-white hover:text-red-400"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                {/* Multiple Images Preview Thumbnails */}
+                {images.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-800/60 mt-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-800 group shadow-md">
+                        <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 left-1 bg-black/80 px-1 rounded text-[9px] text-gray-300 font-bold">
+                          {idx === 0 ? 'Main' : `#${idx + 1}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(idx)}
+                          className="absolute top-1 right-1 p-1 bg-black/80 rounded-full text-white hover:text-red-400 transition"
+                          title="মুছে ফেলুন"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -498,7 +544,6 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
                         বিজ্ঞাপনটি ওয়েবসাইটে দেখানোর জন্য বিকাশ সেন্ড মানি করুন
                       </p>
                     </div>
-
                     <div className="flex gap-1.5">
                       <button
                         type="button"
@@ -553,7 +598,6 @@ export const UserAdModal: React.FC<UserAdModalProps> = ({
                         className="w-full px-3 py-2 bg-[#12141a] border border-gray-800 focus:border-red-600 rounded-xl text-xs text-white placeholder-gray-500 outline-none"
                       />
                     </div>
-
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-400 mb-1">
                         bKash TrxID (ট্রানজেকশন আইডি) *
