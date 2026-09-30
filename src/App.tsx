@@ -8,10 +8,10 @@ import {
   ShieldCheck, 
   Truck, 
   Headphones, 
-  RotateCcw,
   Tag,
   Gamepad2,
   Lock,
+  User,
   Heart
 } from 'lucide-react';
 import { Product, CartItem, UserAd, Order, NotificationItem, Coupon } from './types';
@@ -19,9 +19,12 @@ import { ProductCard } from './components/ProductCard';
 import { CartDrawer } from './components/CartDrawer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { UserAdModal } from './components/UserAdModal';
-import { TurboRaceGame } from './components/TurboRaceGame';
+import { CarGameModal } from './components/CarGameModal';
 import { AdminModal } from './components/AdminModal';
-import { NotificationCenter } from './components/NotificationCenter';
+import { NotificationModal } from './components/NotificationModal';
+import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { WhatsAppButton } from './components/WhatsAppButton';
+import { Footer } from './components/Footer';
 import { productService } from './services/productService';
 
 // Initial Curated Products for GEN-TOUCH
@@ -255,6 +258,11 @@ export function App() {
   const [isPostAdOpen, setIsPostAdOpen] = useState<boolean>(false);
   const [isGameOpen, setIsGameOpen] = useState<boolean>(false);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    return localStorage.getItem('gentouch_admin_auth') === 'true';
+  });
 
   // User Classified Ads
   const [userAds, setUserAds] = useState<UserAd[]>(() => {
@@ -353,7 +361,7 @@ export function App() {
     try {
       localStorage.setItem('gentouch_products', JSON.stringify(products));
     } catch (e) {
-      console.warn('LocalStorage limit exceeded, preserving in memory:', e);
+      console.warn('LocalStorage limit exceeded:', e);
     }
   }, [products]);
 
@@ -505,6 +513,16 @@ export function App() {
       type: 'info',
     };
     setNotifications((prev) => [adNotif, ...prev]);
+  };
+
+  const handleAuthenticateAdmin = () => {
+    setIsAdmin(true);
+    localStorage.setItem('gentouch_admin_auth', 'true');
+  };
+
+  const handleLogoutAdmin = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('gentouch_admin_auth');
   };
 
   // Filter products
@@ -668,7 +686,19 @@ export function App() {
 
           {/* Action Icons */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <NotificationCenter notifications={notifications} />
+            <button
+              onClick={() => setIsNotifOpen(true)}
+              className="relative p-2.5 rounded-full bg-[#1b1f29] border border-gray-700 hover:border-red-500 transition text-gray-300"
+              title="Notifications"
+            >
+              <span className="sr-only">Notifications</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifications.some(n => !n.read) && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
+              )}
+            </button>
 
             <button
               onClick={() => setIsGameOpen(true)}
@@ -699,6 +729,15 @@ export function App() {
                   {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
                 </span>
               )}
+            </button>
+
+            {/* User Account / Orders Button */}
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              title="My Account & Orders"
+              className="p-2.5 rounded-full bg-[#1b1f29] border border-gray-700 hover:border-blue-500 hover:text-blue-400 text-gray-300 transition"
+            >
+              <User className="w-4 h-4" />
             </button>
 
             {/* Admin Lock Button */}
@@ -926,56 +965,14 @@ export function App() {
       </main>
 
       {/* 5. FOOTER */}
-      <footer className="bg-[#11131a] border-t border-gray-800/80 text-gray-400 text-xs mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-3">
-            <span className="text-white font-black text-base tracking-wider">GEN-TOUCH</span>
-            <p className="text-gray-400 leading-relaxed">
-              Bangladesh’s premier destination for high-performance gadgets, luxury tech accessories, and verified classified gear.
-            </p>
-            <p className="text-[11px] text-gray-500">
-              Admin & bKash Merchant: <strong className="text-gray-300">01310588979</strong>
-            </p>
-          </div>
+      <Footer
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenGame={() => setIsGameOpen(true)}
+        onOpenPostAd={() => setIsPostAdOpen(true)}
+      />
 
-          <div>
-            <h4 className="text-white font-bold mb-3 text-sm">Product Categories</h4>
-            <ul className="space-y-2">
-              <li><a href="#catalog" onClick={() => setSelectedCategory('Electronics & Gadgets')} className="hover:text-red-400 transition">Electronics & Gadgets</a></li>
-              <li><a href="#catalog" onClick={() => setSelectedCategory('Fashion & Lifestyle')} className="hover:text-red-400 transition">Fashion & Lifestyle</a></li>
-              <li><a href="#catalog" onClick={() => setSelectedCategory('Home & Kitchen')} className="hover:text-red-400 transition">Home & Kitchen</a></li>
-              <li><a href="#catalog" onClick={() => setSelectedCategory('Classified Ads')} className="hover:text-red-400 transition">Classified Ads Portal</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-3 text-sm">Customer Care</h4>
-            <ul className="space-y-2">
-              <li>Cash on Delivery (All 64 Districts)</li>
-              <li>7-Day Replacement Guarantee</li>
-              <li>bKash & Nagad Payment Verification</li>
-              <li>Track Active Order Status</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-3 text-sm">Secret Coupons & Rewards</h4>
-            <p className="text-gray-400 mb-2">
-              Apply promo code <span className="text-red-400 font-mono font-bold">ilovegentouch</span> in the cart for instant ৳10 discount!
-            </p>
-            <button
-              onClick={() => setIsGameOpen(true)}
-              className="mt-2 w-full py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white font-bold transition flex items-center justify-center gap-2"
-            >
-              <Gamepad2 className="w-4 h-4" /> Play Game For ৳30 Off
-            </button>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-800/80 py-4 text-center text-gray-500 text-[11px]">
-          © {new Date().getFullYear()} GEN-TOUCH Bangladesh. All rights reserved. Engineered for Performance.
-        </div>
-      </footer>
+      {/* Floating WhatsApp Widget */}
+      <WhatsAppButton phoneNumber="8801310588979" />
 
       {/* 6. MODALS & DRAWERS */}
       <CartDrawer
@@ -1012,19 +1009,36 @@ export function App() {
         bkashNumber="01310588979"
       />
 
-      <TurboRaceGame
+      <CarGameModal
         isOpen={isGameOpen}
         onClose={() => setIsGameOpen(false)}
-        onWinDiscount={(amount) => {
-          const promoCode = `turbowin-${amount}`;
-          setAppliedCoupon({
-            code: promoCode,
-            discountType: 'fixed',
-            discountAmount: amount,
-            description: `Turbo Champion ${amount}TK Off`,
-          });
+        onClaimCoupon={(coupon) => {
+          setAppliedCoupon(coupon);
           setIsCartOpen(true);
         }}
+      />
+
+      <NotificationModal
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+        notifications={notifications}
+        onMarkAllAsRead={() => {
+          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        }}
+        onActionClick={(target) => {
+          if (target === 'game') setIsGameOpen(true);
+          if (target === 'ad_post') setIsPostAdOpen(true);
+          if (target === 'admin') setIsAdminOpen(true);
+        }}
+        isAdmin={isAdmin}
+      />
+
+      <CustomerAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        orders={orders}
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        whatsappNumber="01310588979"
       />
 
       <AdminModal
@@ -1039,7 +1053,11 @@ export function App() {
           setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
         }
         onDeleteAd={(id) => setUserAds((prev) => prev.filter((a) => a.id !== id))}
+        isAdmin={isAdmin}
+        setIsAdmin={setIsAdmin}
       />
     </div>
   );
 }
+
+export default App;
