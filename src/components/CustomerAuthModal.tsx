@@ -281,8 +281,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   };
 
   // Filter customer orders
-  const customerOrders = currentUser
-    ? orders.filter(
+const customerOrders = currentUser
+  ? (orders || []).filter(
         (order) =>
           order.customer.phone.replace(/[^0-9]/g, '') === currentUser.phone.replace(/[^0-9]/g, '')
       )
