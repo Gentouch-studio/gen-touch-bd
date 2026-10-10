@@ -377,7 +377,6 @@ export function App() {
   useEffect(() => {
     const unsubscribe = productService.subscribeToProducts((liveItems) => {
       if (liveItems && liveItems.length > 0) {
-        // filter out any corrupt products without valid prices
         const validLive = liveItems.filter(p => p && typeof p.price === 'number');
         if (validLive.length > 0) {
           setProducts(validLive);
@@ -566,44 +565,44 @@ export function App() {
   const unreadNotifsCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-[#0e1015] text-gray-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0e1015] text-gray-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
       
       {/* Top Banner Notice */}
-      <div className="bg-red-700 text-white text-xs font-semibold py-1.5 px-4 shadow-md overflow-hidden">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="bg-black/30 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-bold">
-              GEN-TOUCH ONLINE SHOPPING BD
+      <div className="bg-red-700 text-white text-xs font-semibold py-1.5 px-3 sm:px-4 shadow-md overflow-hidden w-full">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 truncate">
+            <span className="bg-black/30 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-bold shrink-0">
+              GEN-TOUCH
             </span>
-            <span className="hidden sm:inline text-white/90">
-              ⚡ Use secret coupon <strong className="text-yellow-300 font-mono font-bold">ilovegentouch</strong> for ৳10 OFF! | Play Turbo Race to win up to
+            <span className="truncate text-white/90 text-[11px] sm:text-xs">
+              ⚡ Secret code <strong className="text-yellow-300 font-mono font-bold">ilovegentouch</strong> (৳10 OFF)
             </span>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4 text-[11px] font-bold shrink-0">
             <button 
               onClick={() => setIsGameOpen(true)}
-              className="text-yellow-300 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+              className="text-yellow-300 hover:underline flex items-center gap-1 cursor-pointer whitespace-nowrap"
             >
-              🎮 Play Game
+              🎮 <span className="hidden sm:inline">Play Game</span>
             </button>
-          </div>
-          <div className="flex items-center gap-4 text-[11px] font-bold">
             <button
               onClick={() => setIsPostAdOpen(true)}
-              className="hover:text-yellow-300 transition flex items-center gap-1 cursor-pointer"
+              className="hover:text-yellow-300 transition flex items-center gap-1 cursor-pointer whitespace-nowrap bg-black/25 px-2 py-0.5 rounded"
             >
-              + Post Ad (৳10)
+              + Post Ad
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Header / Navigation */}
-      <header className="sticky top-0 z-30 bg-[#12141a]/95 backdrop-blur-md border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 bg-[#12141a]/95 backdrop-blur-md border-b border-gray-800 w-full overflow-hidden">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Logo with Real Car Icon & Subtitle */}
-          <div className="flex items-center gap-3">
-            <a href="#" className="flex items-center gap-3 group">
-              <div className="relative w-14 h-10 flex items-center justify-center">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <a href="#" className="flex items-center gap-2 sm:gap-3 group">
+              <div className="relative w-10 sm:w-14 h-8 sm:h-10 flex items-center justify-center shrink-0">
                 <svg viewBox="0 0 160 80" className="w-full h-full drop-shadow-[0_2px_8px_rgba(239,68,68,0.5)]">
                   <path d="M15 50 C30 50, 45 42, 60 30 C75 18, 95 18, 115 25 C135 32, 145 42, 150 48 C140 52, 130 52, 120 52 C115 42, 105 42, 100 52 C70 52, 60 52, 50 52 C45 42, 35 42, 30 52 Z" fill="#b91c1c" />
                   <path d="M55 32 C65 24, 85 24, 105 28 L110 38 L50 38 Z" fill="#1e293b" opacity="0.8" />
@@ -614,10 +613,10 @@ export function App() {
                 </svg>
               </div>
               <div>
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-1">
+                <span className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-0.5">
                   GEN<span className="text-red-600">-TOUCH</span>
                 </span>
-                <span className="text-[9px] uppercase tracking-widest text-gray-400 font-semibold block -mt-1">
+                <span className="text-[8px] sm:text-[9px] uppercase tracking-widest text-gray-400 font-semibold block -mt-1">
                   ONLINE SHOPPING BD
                 </span>
               </div>
@@ -625,7 +624,7 @@ export function App() {
           </div>
 
           {/* Search Input Box */}
-          <div className="flex-1 max-w-md mx-4 hidden md:block">
+          <div className="flex-1 max-w-md mx-2 hidden md:block">
             <div className="relative">
               <input
                 type="text"
@@ -639,11 +638,11 @@ export function App() {
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
+          <div className="flex items-center gap-1.5 sm:gap-3.5 shrink-0">
             {/* Post Ad Button */}
             <button
               onClick={() => setIsPostAdOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-red-600/30 transition transform hover:scale-105 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-red-600/30 transition active:scale-95 cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Post Ad</span>
@@ -652,12 +651,12 @@ export function App() {
             {/* Notification Bell with Badge */}
             <button
               onClick={() => setIsNotifOpen(true)}
-              className="relative p-2.5 rounded-xl bg-[#181a20] border border-gray-800 hover:border-red-500 text-gray-300 transition cursor-pointer"
+              className="relative p-2 sm:p-2.5 rounded-xl bg-[#181a20] border border-gray-800 hover:border-red-500 text-gray-300 transition cursor-pointer"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
                   {unreadNotifsCount}
                 </span>
               )}
@@ -666,7 +665,7 @@ export function App() {
             {/* User Account / Orders Button */}
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="p-2.5 rounded-xl bg-[#181a20] border border-gray-800 hover:border-red-500 text-gray-300 transition cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-xl bg-[#181a20] border border-gray-800 hover:border-red-500 text-gray-300 transition cursor-pointer"
               title="Customer Login / Order Track"
             >
               <User className="w-4 h-4" />
@@ -675,10 +674,10 @@ export function App() {
             {/* Cart Button with Count Badge */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-red-600/30 transition transform hover:scale-105 cursor-pointer"
+              className="px-2.5 sm:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 sm:gap-2 shadow-lg shadow-red-600/30 transition active:scale-95 cursor-pointer shrink-0"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Cart</span>
+              <span className="hidden sm:inline">Cart</span>
               <span className="bg-black/30 px-1.5 py-0.5 rounded-full text-[10px] font-mono">
                 {cartTotalCount}
               </span>
@@ -687,7 +686,7 @@ export function App() {
         </div>
 
         {/* Mobile Search Input */}
-        <div className="md:hidden px-4 pb-3">
+        <div className="md:hidden px-3 pb-2.5">
           <div className="relative">
             <input
               type="text"
@@ -702,31 +701,31 @@ export function App() {
       </header>
 
       {/* Hero Section Banner */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#161820] to-[#0e1015] py-16 border-b border-gray-800/80">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#161820] to-[#0e1015] py-10 sm:py-16 border-b border-gray-800/80 w-full">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.18),transparent_55%)] pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="max-w-2xl space-y-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 sm:gap-10">
+          <div className="max-w-2xl space-y-4 text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-500/20 text-red-400 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Official Premium Tech & Classifieds BD</span>
             </div>
             
-            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
+            <h1 className="text-3xl sm:text-6xl font-black text-white tracking-tight leading-tight">
               GEN-TOUCH <span className="text-red-600">Online Shopping</span> <br />
               <span className="text-red-500">BD</span>
             </h1>
 
-            <p className="text-gray-400 text-sm sm:text-base leading-relaxed max-w-xl">
+            <p className="text-gray-400 text-xs sm:text-base leading-relaxed max-w-xl">
               Discover authentic audiophile acoustic gear, high-grade mechanical keyboards, 4K automotive dash cams, and verified community classifieds.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2">
               <button
                 onClick={() => {
                   const el = document.getElementById('products-section');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-xl shadow-red-600/30 transition transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
+                className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-red-600/30 transition transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
               >
                 <span>Shop Now</span>
                 <ArrowRight className="w-4 h-4" />
@@ -734,7 +733,7 @@ export function App() {
 
               <button
                 onClick={() => setIsGameOpen(true)}
-                className="px-5 py-3 rounded-xl bg-[#1b1e27] hover:bg-[#222632] border border-gray-700/80 text-yellow-300 font-bold text-sm transition flex items-center gap-2 cursor-pointer"
+                className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-[#1b1e27] hover:bg-[#222632] border border-gray-700/80 text-yellow-300 font-bold text-xs sm:text-sm transition flex items-center gap-1.5 sm:gap-2 cursor-pointer"
               >
                 <Gamepad2 className="w-4 h-4" />
                 <span>Play Turbo Race (Win ৳30)</span>
@@ -742,7 +741,7 @@ export function App() {
 
               <button
                 onClick={() => setIsPostAdOpen(true)}
-                className="px-5 py-3 rounded-xl bg-[#1b1e27] hover:bg-[#222632] border border-gray-700/80 text-gray-200 font-bold text-sm transition flex items-center gap-2 cursor-pointer"
+                className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-[#1b1e27] hover:bg-[#222632] border border-gray-700/80 text-gray-200 font-bold text-xs sm:text-sm transition flex items-center gap-1.5 sm:gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-red-500" />
                 <span>Sell Your Item (৳10)</span>
@@ -753,15 +752,15 @@ export function App() {
       </section>
 
       {/* Main Catalog Section */}
-      <section id="products-section" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
+      <section id="products-section" className="py-8 sm:py-12 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex-1 w-full">
         
         {/* Category Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 sm:mb-8 no-scrollbar w-full">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+              className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 ${
                 selectedCategory === cat
                   ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
                   : 'bg-[#161920] text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
@@ -773,9 +772,9 @@ export function App() {
         </div>
 
         {/* Section Title */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
               {selectedCategory}
               <span className="text-xs font-normal text-gray-400">
                 ({filteredProducts.length} items available)
@@ -793,7 +792,7 @@ export function App() {
             <p className="text-xs text-gray-500 mt-1">Try clearing your search query or switching categories.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
@@ -896,6 +895,7 @@ export function App() {
       <CustomerAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        orders={orders || []}
       />
     </div>
   );
