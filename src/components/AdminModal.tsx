@@ -223,8 +223,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   });
 
   const pendingAdsCount = (userAds || []).filter(a => a?.status === 'pending').length;
-  const pendingOrdersCount = (orders || []).filter(o => o?.status === 'Pending' || (o?.status as string) === 'Pending Approval').length;
-
+  const pendingOrdersCount = (orders || []).filter(o => o && (o.status === 'Pending' || o.status === 'Pending Approval')).length;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
       <div className="relative w-full max-w-5xl bg-[#0b0c10] border border-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
