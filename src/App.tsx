@@ -281,7 +281,7 @@ export function App() {
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    return localStorage.getItem('gentouch_admin_auth') === 'true';
+    return localStorage.getItem('gentouch_admin_auth') === 'true' || sessionStorage.getItem('gentouch_is_admin') === 'true';
   });
 
   // User Classified Ads
@@ -519,6 +519,23 @@ export function App() {
     setNotifications((prev) => [adNotif, ...prev]);
   };
 
+  const handleAuthenticateAdmin = (code: string) => {
+    const trimmed = code.trim();
+    if (trimmed === 'Hunter#11220' || trimmed === 'Hunter#1122' || trimmed === 'Hunter#1212') {
+      setIsAdmin(true);
+      localStorage.setItem('gentouch_admin_auth', 'true');
+      sessionStorage.setItem('gentouch_is_admin', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogoutAdmin = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('gentouch_admin_auth');
+    sessionStorage.removeItem('gentouch_is_admin');
+  };
+
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
@@ -751,7 +768,7 @@ export function App() {
         </div>
       </section>
 
-      {/* Main Catalog Section */}
+      {/* Main Catalog Section - Side by Side 2 Columns on Mobile! */}
       <section id="products-section" className="py-8 sm:py-12 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex-1 w-full">
         
         {/* Category Filter Tabs */}
@@ -784,7 +801,7 @@ export function App() {
           </div>
         </div>
 
-        {/* Product Grid */}
+        {/* Product Grid: 2 columns on mobile, 4 on desktop */}
         {filteredProducts.length === 0 ? (
           <div className="py-16 text-center text-gray-500 bg-[#161920] rounded-3xl border border-gray-800">
             <Search className="w-12 h-12 mx-auto mb-3 text-gray-600" />
@@ -792,7 +809,7 @@ export function App() {
             <p className="text-xs text-gray-500 mt-1">Try clearing your search query or switching categories.</p>
           </div>
         ) : (
-<div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
@@ -817,7 +834,13 @@ export function App() {
       />
 
       {/* Global Footer */}
-      <Footer onOpenAdmin={() => setIsAdminOpen(true)} />
+      <Footer 
+        onOpenAdmin={() => {
+          setIsAdmin(true);
+          sessionStorage.setItem('gentouch_is_admin', 'true');
+          setIsAdminOpen(true);
+        }} 
+      />
 
       {/* WhatsApp Floating Chat Widget */}
       <WhatsAppButton />
@@ -865,7 +888,10 @@ export function App() {
         onActionClick={(target) => {
           if (target === 'game') setIsGameOpen(true);
           if (target === 'ad_post') setIsPostAdOpen(true);
-          if (target === 'admin') setIsAdminOpen(true);
+          if (target === 'admin') {
+            setIsAdmin(true);
+            setIsAdminOpen(true);
+          }
         }}
         isAdmin={isAdmin}
       />
@@ -881,21 +907,26 @@ export function App() {
       <AdminModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
-        orders={orders}
+        orders={orders || []}
         onUpdateOrderStatus={handleUpdateOrderStatus}
-        userAds={userAds}
+        userAds={userAds || []}
         onUpdateAdStatus={handleUpdateAdStatus}
         onDeleteAd={handleDeleteAd}
-        products={products}
-        onAddProduct={handleAddProduct}
-        isAdmin={isAdmin}
-        setIsAdmin={setIsAdmin}
+        isAuthenticated={isAdmin}
+        onAuthenticate={handleAuthenticateAdmin}
+        onLogout={handleLogoutAdmin}
       />
 
       <CustomerAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         orders={orders || []}
+        onOpenAdmin={() => {
+          setIsAuthModalOpen(false);
+          setIsAdmin(true);
+          sessionStorage.setItem('gentouch_is_admin', 'true');
+          setIsAdminOpen(true);
+        }}
       />
     </div>
   );
