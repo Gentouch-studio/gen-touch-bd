@@ -280,12 +280,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setTimeout(() => setCopiedId(false), 2000);
   };
 
-  // Filter customer orders
-const customerOrders = currentUser
-  ? (orders || []).filter(
-        (order) =>
-          order.customer.phone.replace(/[^0-9]/g, '') === currentUser.phone.replace(/[^0-9]/g, '')
-      )
+// Filter customer orders
+  const customerOrders = currentUser
+    ? (orders || []).filter((order) => {
+        if (!order) return false;
+        const orderPhone = (order.customer?.phone || (order as any).phone || (order as any).customerPhone || '').replace(/[^0-9]/g, '');
+        const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
+        return orderPhone && userPhone && orderPhone === userPhone;
+      })
     : [];
 
   const getStatusBadge = (status: OrderStatus | string) => {
